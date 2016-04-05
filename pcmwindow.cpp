@@ -176,12 +176,24 @@ InventoryCard::InventoryCard(QString sInitLine)
     sTmp = elements.at(pviTheFieldIndexes->at(4));
     iMyCardNumber = sTmp.toInt();
 
-    sMyName = elements.at(pviTheFieldIndexes->at(2));
-    sMyEdition = elements.at(pviTheFieldIndexes->at(3));
-    sMyCondition = elements.at(pviTheFieldIndexes->at(5));
-    sMyLanguage = elements.at(pviTheFieldIndexes->at(6));
-    sMyRarity = elements.at(pviTheFieldIndexes->at(15));
+    sTmp = elements.at(pviTheFieldIndexes->at(16));
+    dMyMarketPrice = sTmp.toFloat();
 
-    bMyAlteredArt = !elements.at(pviTheFieldIndexes->at(10)).isEmpty();
+    sTmp = elements.at(pviTheFieldIndexes->at(14));
+    dMySalePrice = sTmp.toFloat();
+
+    sMyName      = elements.at(pviTheFieldIndexes->at(2));
+    sMyEdition   = elements.at(pviTheFieldIndexes->at(3));
+    sMyCondition = elements.at(pviTheFieldIndexes->at(5));
+    sMyLanguage  = elements.at(pviTheFieldIndexes->at(6));
+    sMyRarity    = elements.at(pviTheFieldIndexes->at(15));
+
+    bMyFoil        = !elements.at(pviTheFieldIndexes->at(7)).isEmpty();
+    bMySigned      = !elements.at(pviTheFieldIndexes->at(8)).isEmpty();
+    bMyArtistProof = !elements.at(pviTheFieldIndexes->at(9)).isEmpty();
+    bMyAlteredArt  = !elements.at(pviTheFieldIndexes->at(10)).isEmpty();
+    bMyMisprint    = !elements.at(pviTheFieldIndexes->at(11)).isEmpty();
+    bMyPromo       = !elements.at(pviTheFieldIndexes->at(12)).isEmpty();
+    bMyTextless    = !elements.at(pviTheFieldIndexes->at(13)).isEmpty();
 
 }
