@@ -41,12 +41,13 @@ private:
     QLabel *pqlMyImage;
     QTcpServer *pMyTCPServer;
 
-    QVector<QTcpSocket*> vMyTCPSockets;
+    QMap<QString, unsigned int> qmTheStringIndex;
 
 private slots:
     void NewTCPConnection();
     void TCPSocketReadReady();
     void TCPDisconnected();
+    void on_pbOpenCollection_clicked();
 };
 
 #endif // PCMWINDOW_H

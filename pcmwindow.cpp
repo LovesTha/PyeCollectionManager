@@ -1,6 +1,7 @@
 #include "pcmwindow.h"
 #include "ui_pcmwindow.h"
 #include <QTcpSocket>
+#include <QFile>
 
 PCMWindow::PCMWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -195,5 +196,30 @@ InventoryCard::InventoryCard(QString sInitLine)
     bMyMisprint    = !elements.at(pviTheFieldIndexes->at(11)).isEmpty();
     bMyPromo       = !elements.at(pviTheFieldIndexes->at(12)).isEmpty();
     bMyTextless    = !elements.at(pviTheFieldIndexes->at(13)).isEmpty();
+}
 
+void PCMWindow::on_pbOpenCollection_clicked()
+{
+    QFile fInput(ui->collectionSourceLineEdit->text());
+    if(fInput.open(QIODevice::ReadOnly | QIODevice::Text))
+    {
+        QTextStream in(&fInput);
+        while (!in.atEnd())
+        {
+            QString line = in.readLine();
+            InventoryCard card(line);
+            if(qmTheStringIndex.contains(card.sMyName))
+            {
+                qmTheStringIndex.insert(card.sMyName, qmTheStringIndex.value(card.sMyName));
+            }
+            else
+            {
+                qmTheStringIndex.insert(card.sMyName, 1);
+            }
+        }
+    }
+    else
+    {
+
+    }
 }
