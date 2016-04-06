@@ -6,6 +6,7 @@
 #include <QTcpServer>
 #include <QVector>
 #include <QMap>
+#include <QXmlStreamReader>
 
 namespace Ui {
 class PCMWindow;
@@ -26,7 +27,15 @@ public:
 private:
     static bool InitOrderEstablished;
     static QVector<unsigned int> *pviTheFieldIndexes;
-    };
+};
+
+class OracleCard
+{
+public:
+    quint64 iMultiverseID;
+    QString sNameEn, sNameDe, sSet;
+    double dValue;
+};
 
 class PCMWindow : public QMainWindow
 {
@@ -38,16 +47,26 @@ public:
 
 private:
     Ui::PCMWindow *ui;
-    QLabel *pqlMyImage;
     QTcpServer *pMyTCPServer;
 
-    QMap<QString, unsigned int> qmTheStringIndex;
+    QMap<QString, int>        qmInventory;
+    QMap<quint64, QString>    qmMultiverse;
+    QMap<QString, QString>    qmTheSetCode;
+    QMap<quint64, OracleCard> qmOracle;
+
+    QXmlStreamReader reader;
+    void ReadOracle();
+    void ReadSets();
+    void ReadCards();
+    void ReadSet();
+    void ReadCard();
 
 private slots:
     void NewTCPConnection();
     void TCPSocketReadReady();
     void TCPDisconnected();
     void on_pbOpenCollection_clicked();
+    void on_pbOpenDatabase_clicked();
 };
 
 #endif // PCMWINDOW_H

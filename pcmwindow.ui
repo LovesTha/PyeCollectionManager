@@ -18,13 +18,20 @@
     <item row="0" column="0">
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>1</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="MainTab">
        <attribute name="title">
         <string>Tab 1</string>
        </attribute>
        <layout class="QVBoxLayout" name="verticalLayout">
+        <item>
+         <widget class="QLabel" name="imageLabel">
+          <property name="text">
+           <string>TextLabel</string>
+          </property>
+         </widget>
+        </item>
         <item>
          <widget class="QLabel" name="cardAction">
           <property name="text">
@@ -85,7 +92,11 @@
          </widget>
         </item>
         <item row="0" column="1">
-         <widget class="QLineEdit" name="collectionSourceLineEdit"/>
+         <widget class="QLineEdit" name="collectionSourceLineEdit">
+          <property name="text">
+           <string>/data/Downloads/Inventory_LovesTha_2016.April.05.csv</string>
+          </property>
+         </widget>
         </item>
         <item row="1" column="0">
          <widget class="QLabel" name="tradeOutputLabel">
@@ -105,7 +116,11 @@
          <widget class="QLineEdit" name="tradeOutputLineEdit"/>
         </item>
         <item row="2" column="1">
-         <widget class="QLineEdit" name="cardDatabaseLocationLineEdit"/>
+         <widget class="QLineEdit" name="cardDatabaseLocationLineEdit">
+          <property name="text">
+           <string>/data/Oracle/CompleteEnDe.xml</string>
+          </property>
+         </widget>
         </item>
        </layout>
       </widget>

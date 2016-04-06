@@ -9,21 +9,18 @@ PCMWindow::PCMWindow(QWidget *parent) :
 {
     ui->setupUi(this);
 
-    pqlMyImage = new QLabel(this);
-    ui->MainTab->layout()->addWidget(pqlMyImage);
-
     pMyTCPServer = new QTcpServer(this);
     pMyTCPServer->setMaxPendingConnections(99);
     if(!pMyTCPServer->listen(QHostAddress::Any, 8080))
     {
-        pqlMyImage->setText("Couldn't open port 8080, try restarting this application after you have changed something");
+        ui->imageLabel->setText("Couldn't open port 8080, try restarting this application after you have changed something");
     }
     connect(pMyTCPServer, SIGNAL(newConnection()), SLOT(NewTCPConnection()));
 }
 
 PCMWindow::~PCMWindow()
 {
-    delete pqlMyImage;
+    delete ui->imageLabel;
     delete pMyTCPServer;
     delete ui;
 }
@@ -65,8 +62,36 @@ void PCMWindow::TCPSocketReadReady()
             QList<QByteArray> request = elements.takeFirst().split('=');
             bool bOk;
             unsigned int multiverseID = request.takeLast().toInt(&bOk);
-            if(bOk) pqlMyImage->setText(QString("Multiverse ID of: %1").arg(multiverseID));
-            else pqlMyImage->setText("Invalid request");
+            if(bOk)
+            {
+                //ui->imageLabel->setText(QString("Multiverse ID of: %1").arg(multiverseID));
+                QString stmp = QString("/data/Oracle/pics/%1/%2.full.jpg").arg(qmOracle.value(multiverseID).sSet).arg(multiverseID);
+                QImage qImage(stmp);
+                QPixmap image(QPixmap::fromImage(qImage));
+                ui->imageLabel->setPixmap(image);
+                double dTmp = qmOracle.value(multiverseID).dValue;
+                int iQuantity = qmInventory.value(qmMultiverse.value(multiverseID), -1);
+                //ui->imageLabel.show();
+                if(qmInventory.value(qmMultiverse.value(multiverseID), -1) < 1)
+                {
+                    //card not in inventory
+                    ui->cardAction->setText("KEEP!");
+                    qmInventory.insert(qmMultiverse.value(multiverseID), 1);
+                }
+                else if(qmOracle.value(multiverseID).dValue > 0.1)
+                {
+                    ui->cardAction->setText("TRADE!");
+                }
+                else if(qmOracle.value(multiverseID).dValue < 0.001)
+                {
+                    ui->cardAction->setText("No Price Data");
+                }
+                else
+                {
+                    ui->cardAction->setText("trash");
+                }
+            }
+            else ui->imageLabel->setText("Invalid request");
         }
     }
 }
@@ -80,7 +105,7 @@ void InventoryCard::InitOrder(QString sInitLine)
     if(pviTheFieldIndexes == 0) pviTheFieldIndexes = new QVector<unsigned int>;
     for(int i = 0; i < 17; ++i) pviTheFieldIndexes->append(i);
 
-    QStringList elements = sInitLine.split("\t");
+    QStringList elements = sInitLine.split(",");
     for(unsigned int iIndex = 0; !elements.isEmpty(); ++iIndex)
     {
         QString item = elements.takeFirst();
@@ -159,7 +184,7 @@ void InventoryCard::InitOrder(QString sInitLine)
 
 InventoryCard::InventoryCard(QString sInitLine)
 {
-    QStringList elements = sInitLine.split("\t");
+    QStringList elements = sInitLine.split(",");
     if(elements.size() != 17)
         return;
 
@@ -204,22 +229,123 @@ void PCMWindow::on_pbOpenCollection_clicked()
     if(fInput.open(QIODevice::ReadOnly | QIODevice::Text))
     {
         QTextStream in(&fInput);
+        QString line = in.readLine();
+        InventoryCard::InitOrder(line);
         while (!in.atEnd())
         {
-            QString line = in.readLine();
+            line = in.readLine();
             InventoryCard card(line);
-            if(qmTheStringIndex.contains(card.sMyName))
+            if(qmInventory.contains(card.sMyName))
             {
-                qmTheStringIndex.insert(card.sMyName, qmTheStringIndex.value(card.sMyName));
+                qmInventory.insert(card.sMyName, qmInventory.value(card.sMyName) + card.iMyCount);
             }
             else
             {
-                qmTheStringIndex.insert(card.sMyName, 1);
+                qmInventory.insert(card.sMyName, card.iMyCount);
             }
         }
     }
     else
     {
-
+        int PleaseHandleNotOpeningFile = 9;
     }
+}
+
+void PCMWindow::on_pbOpenDatabase_clicked()
+{
+    QFile fInput(ui->cardDatabaseLocationLineEdit->text());
+    if(fInput.open(QIODevice::ReadOnly | QIODevice::Text))
+    {
+        reader.setDevice(&fInput);
+
+        if(reader.readNextStartElement())
+        {
+            QString sTmp = reader.name().toString();
+            if(reader.name() == "mtg_carddatabase") ReadOracle();
+            else reader.raiseError(QObject::tr("Not a Gatherer database rip"));
+        }
+
+        if(reader.error())
+        {
+            int PleaseReportErrors = 8;
+        }
+    }
+}
+
+void PCMWindow::ReadOracle()
+{
+    while(reader.readNextStartElement())
+    {
+        if(reader.name() == "sets") ReadSets();
+        else if(reader.name() == "cards") ReadCards();
+        else reader.skipCurrentElement();
+    }
+}
+
+void PCMWindow::ReadSets()
+{
+    while(reader.readNextStartElement())
+    {
+        if(reader.name() == "set") ReadSet();
+        else reader.skipCurrentElement();
+    }
+}
+
+void PCMWindow::ReadSet()
+{
+    QString sName, sCode;
+    while(reader.readNextStartElement())
+    {
+        if(reader.name() == "name")
+            sName = reader.readElementText();
+        else if(reader.name() == "code")
+            sCode = reader.readElementText();
+        else reader.skipCurrentElement();
+    }
+
+    qmTheSetCode.insert(sCode, sName);
+}
+
+void PCMWindow::ReadCards()
+{
+    while(reader.readNextStartElement())
+    {
+        QString sTmp = reader.name().toString();
+        if(reader.name() == "card") ReadCard();
+        else reader.skipCurrentElement();
+    }
+}
+
+void PCMWindow::ReadCard()
+{
+    QString sName, sSet, sNameDe;
+    quint64 iID, iNumber;
+    double dValue = -1;
+    while(reader.readNextStartElement())
+    {
+        QString stmp = reader.name().toString();
+        if(reader.name() == "id")
+            iID     = reader.readElementText().toInt();
+        else if(reader.name() == "set")
+            sSet    = reader.readElementText();
+        else if(reader.name() == "name")
+            sName   = reader.readElementText();
+        else if(reader.name() == "number")
+            iNumber = reader.readElementText().toInt();
+        else if(reader.name() == "name_DE")
+            sNameDe = reader.readElementText();
+        else if(reader.name() == "pricing_mid")
+            dValue  = reader.readElementText().toDouble();
+        else reader.skipCurrentElement();
+    }
+
+    OracleCard card;
+    card.iMultiverseID = iID;
+    card.sNameDe = sNameDe;
+    card.sNameEn = sName;
+    card.sSet = sSet;
+    card.dValue = dValue;
+
+    qmMultiverse.insert(iID, sName);
+    qmOracle.insert(iID, card);
 }
