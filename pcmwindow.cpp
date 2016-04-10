@@ -64,14 +64,14 @@ void PCMWindow::TCPSocketReadReady()
             unsigned int multiverseID = request.takeLast().toInt(&bOk);
             if(bOk)
             {
-                //ui->imageLabel->setText(QString("Multiverse ID of: %1").arg(multiverseID));
                 QString stmp = QString("/data/Oracle/pics/%1/%2.full.jpg").arg(qmOracle.value(multiverseID).sSet).arg(multiverseID);
                 QImage qImage(stmp);
                 QPixmap image(QPixmap::fromImage(qImage));
                 ui->imageLabel->setPixmap(image);
-                double dTmp = qmOracle.value(multiverseID).dValue;
+                //double dTmp = qmOracle.value(multiverseID).dValue;
                 int iQuantity = qmInventory.value(qmMultiverse.value(multiverseID), -1);
-                //ui->imageLabel.show();
+                ui->lcdCollectionQuantity->display(iQuantity);
+
                 if(qmInventory.value(qmMultiverse.value(multiverseID), -1) < 1)
                 {
                     //card not in inventory
@@ -91,7 +91,10 @@ void PCMWindow::TCPSocketReadReady()
                     ui->cardAction->setText("trash");
                 }
             }
-            else ui->imageLabel->setText("Invalid request");
+            else
+            {
+                ui->imageLabel->setText("Invalid request");
+            }
         }
     }
 }
@@ -348,4 +351,27 @@ void PCMWindow::ReadCard()
 
     qmMultiverse.insert(iID, sName);
     qmOracle.insert(iID, card);
+}
+
+void PCMWindow::on_pbOpenOutputs_clicked()
+{
+    QFile *tradeFile = new QFile(ui->tradeOutputLineEdit->text());
+    if(tradeFile->open(QIODevice::WriteOnly | QIODevice::Text))
+    {
+        fMyTradesOutput.setDevice(tradeFile);
+    }
+    else
+    {
+        int PleaseHandleNotOpeningFile = 9;
+    }
+
+    QFile *collectionFile = new QFile(ui->tradeOutputLineEdit->text());
+    if(collectionFile->open(QIODevice::WriteOnly | QIODevice::Text))
+    {
+        fMyCollectionOutput.setDevice(collectionFile);
+    }
+    else
+    {
+        int PleaseHandleNotOpeningFile = 9;
+    }
 }

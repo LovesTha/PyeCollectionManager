@@ -7,6 +7,8 @@
 #include <QVector>
 #include <QMap>
 #include <QXmlStreamReader>
+#include <QFile>
+
 
 namespace Ui {
 class PCMWindow;
@@ -61,12 +63,15 @@ private:
     void ReadSet();
     void ReadCard();
 
+    QTextStream fMyCollectionOutput, fMyTradesOutput;
+
 private slots:
     void NewTCPConnection();
     void TCPSocketReadReady();
     void TCPDisconnected();
     void on_pbOpenCollection_clicked();
     void on_pbOpenDatabase_clicked();
+    void on_pbOpenOutputs_clicked();
 };
 
 #endif // PCMWINDOW_H
