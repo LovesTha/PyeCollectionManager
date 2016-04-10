@@ -67,6 +67,7 @@ void PCMWindow::TCPSocketReadReady()
                 QString stmp = QString("/data/Oracle/pics/%1/%2.full.jpg").arg(qmOracle.value(multiverseID).sSet).arg(multiverseID);
                 QImage qImage(stmp);
                 QPixmap image(QPixmap::fromImage(qImage));
+                image = image.scaled(ui->imageLabel->size(), Qt::AspectRatioMode::KeepAspectRatio, Qt::SmoothTransformation);
                 ui->imageLabel->setPixmap(image);
                 //double dTmp = qmOracle.value(multiverseID).dValue;
                 int iQuantity = qmInventory.value(qmMultiverse.value(multiverseID), -1);

@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>458</width>
+    <width>469</width>
     <height>431</height>
    </rect>
   </property>
@@ -15,12 +15,12 @@
   </property>
   <widget class="QWidget" name="centralWidget">
    <layout class="QGridLayout" name="gridLayout">
-    <item row="0" column="0">
+    <item row="1" column="0">
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>1</number>
+       <number>0</number>
       </property>
-      <widget class="QWidget" name="MainTab">
+      <widget class="QWidget" name="mainTab">
        <attribute name="title">
         <string>Main</string>
        </attribute>
@@ -28,22 +28,9 @@
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_3">
           <item>
-           <spacer name="horizontalSpacer_4">
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>40</width>
-              <height>20</height>
-             </size>
-            </property>
-           </spacer>
-          </item>
-          <item>
            <widget class="QLabel" name="imageLabel">
             <property name="sizePolicy">
-             <sizepolicy hsizetype="Maximum" vsizetype="Maximum">
+             <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
               <horstretch>0</horstretch>
               <verstretch>0</verstretch>
              </sizepolicy>
@@ -66,66 +53,15 @@
             <property name="text">
              <string>Image Shows Here</string>
             </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
            </widget>
-          </item>
-          <item>
-           <spacer name="horizontalSpacer_3">
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>40</width>
-              <height>20</height>
-             </size>
-            </property>
-           </spacer>
           </item>
          </layout>
         </item>
         <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_2">
-          <item>
-           <spacer name="horizontalSpacer">
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>40</width>
-              <height>20</height>
-             </size>
-            </property>
-           </spacer>
-          </item>
-          <item>
-           <widget class="QLabel" name="cardAction">
-            <property name="text">
-             <string>No Card Detected</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="pbAddToCollectionAnyway">
-            <property name="text">
-             <string>Add To Collection Anyway</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <spacer name="horizontalSpacer_2">
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>40</width>
-              <height>20</height>
-             </size>
-            </property>
-           </spacer>
-          </item>
-         </layout>
+         <layout class="QHBoxLayout" name="horizontalLayout_2"/>
         </item>
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_4">
@@ -145,7 +81,7 @@
           <item>
            <widget class="QLabel" name="label">
             <property name="text">
-             <string>Coppies In Collection:</string>
+             <string>Copies In Collection:</string>
             </property>
            </widget>
           </item>
@@ -172,6 +108,25 @@
            </widget>
           </item>
           <item>
+           <widget class="QLabel" name="cardAction">
+            <property name="font">
+             <font>
+              <pointsize>36</pointsize>
+             </font>
+            </property>
+            <property name="text">
+             <string>No Card Detected</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="pbAddToCollectionAnyway">
+            <property name="text">
+             <string>Add To Collection Anyway</string>
+            </property>
+           </widget>
+          </item>
+          <item>
            <spacer name="horizontalSpacer_5">
             <property name="orientation">
              <enum>Qt::Horizontal</enum>
@@ -186,18 +141,72 @@
           </item>
          </layout>
         </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="settingsTab">
+       <attribute name="title">
+        <string>Settings</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_2">
         <item>
-         <spacer name="verticalSpacer">
-          <property name="orientation">
-           <enum>Qt::Vertical</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>20</width>
-            <height>40</height>
-           </size>
-          </property>
-         </spacer>
+         <layout class="QFormLayout" name="formLayout_2">
+          <item row="0" column="0">
+           <widget class="QLabel" name="collectionSourceLabel">
+            <property name="text">
+             <string>Collection Source</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QLineEdit" name="collectionSourceLineEdit">
+            <property name="text">
+             <string>/data/Downloads/Inventory_LovesTha_2016.April.05.csv</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="tradeOutputLabel">
+            <property name="text">
+             <string>Trade Output</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QLineEdit" name="tradeOutputLineEdit">
+            <property name="text">
+             <string>/data/trades.csv</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0">
+           <widget class="QLabel" name="collectionOutputLabel">
+            <property name="text">
+             <string>Collection Output</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="1">
+           <widget class="QLineEdit" name="collectionOutputLineEdit">
+            <property name="text">
+             <string>/data/collection.csv</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="0">
+           <widget class="QLabel" name="cardDatabaseLocationLabel">
+            <property name="text">
+             <string>CardDatabaseLocation</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="1">
+           <widget class="QLineEdit" name="cardDatabaseLocationLineEdit">
+            <property name="text">
+             <string>/data/Oracle/CompleteEnDe.xml</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
         </item>
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout">
@@ -229,69 +238,6 @@
         </item>
        </layout>
       </widget>
-      <widget class="QWidget" name="SettingsTab">
-       <attribute name="title">
-        <string>Settings</string>
-       </attribute>
-       <layout class="QFormLayout" name="formLayout">
-        <item row="0" column="0">
-         <widget class="QLabel" name="collectionSourceLabel">
-          <property name="text">
-           <string>Collection Source</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="1">
-         <widget class="QLineEdit" name="collectionSourceLineEdit">
-          <property name="text">
-           <string>/data/Downloads/Inventory_LovesTha_2016.April.05.csv</string>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="0">
-         <widget class="QLabel" name="tradeOutputLabel">
-          <property name="text">
-           <string>Trade Output</string>
-          </property>
-         </widget>
-        </item>
-        <item row="3" column="0">
-         <widget class="QLabel" name="cardDatabaseLocationLabel">
-          <property name="text">
-           <string>CardDatabaseLocation</string>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="1">
-         <widget class="QLineEdit" name="tradeOutputLineEdit">
-          <property name="text">
-           <string>/data/trades.csv</string>
-          </property>
-         </widget>
-        </item>
-        <item row="3" column="1">
-         <widget class="QLineEdit" name="cardDatabaseLocationLineEdit">
-          <property name="text">
-           <string>/data/Oracle/CompleteEnDe.xml</string>
-          </property>
-         </widget>
-        </item>
-        <item row="2" column="0">
-         <widget class="QLabel" name="collectionOutputLabel">
-          <property name="text">
-           <string>Collection Output</string>
-          </property>
-         </widget>
-        </item>
-        <item row="2" column="1">
-         <widget class="QLineEdit" name="collectionOutputLineEdit">
-          <property name="text">
-           <string>/data/collection.csv</string>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </widget>
      </widget>
     </item>
    </layout>
@@ -301,7 +247,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>458</width>
+     <width>469</width>
      <height>25</height>
     </rect>
    </property>
