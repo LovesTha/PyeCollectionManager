@@ -248,6 +248,20 @@
             </property>
            </widget>
           </item>
+          <item row="8" column="0">
+           <widget class="QLabel" name="tradeValueThresholdLabel">
+            <property name="text">
+             <string>Trade Value Threshold</string>
+            </property>
+           </widget>
+          </item>
+          <item row="8" column="1">
+           <widget class="QDoubleSpinBox" name="tradeValueThresholdDoubleSpinBox">
+            <property name="value">
+             <double>0.100000000000000</double>
+            </property>
+           </widget>
+          </item>
          </layout>
         </item>
         <item>

@@ -8,6 +8,7 @@
 #include <QFileInfo>
 #include <QtNetwork>
 #include <map>
+#include <QSettings>
 
 PCMWindow::PCMWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -26,16 +27,49 @@ PCMWindow::PCMWindow(QWidget *parent) :
     manager = new QNetworkAccessManager();
     connect(manager, SIGNAL(finished(QNetworkReply*)), this, SLOT(ImageFetchFinished(QNetworkReply*)));
 
+    QCoreApplication::setOrganizationName("Pye");
+    QCoreApplication::setOrganizationDomain("cerberos.id.au");
+    QCoreApplication::setApplicationName("Collection Manager");
+
+    //Loading Settings
+    QSettings Config;
+    ui->cardDatabaseLocationLineEdit->setText(Config.value("Oracle Database Location", "/mtg/AllSetsArray.json").toString());
+    ui->collectionOutputLineEdit->setText(Config.value("Collection Output", "/mtg/collection.csv").toString());
+    ui->collectionSourceLineEdit->setText(Config.value("Collection Input", "/mtg/Inventory_User_2016.December.24.csv").toString());
+    ui->deckBoxPriceInputLineEdit->setText(Config.value("Deckbox Price Database", "/mtg/AllTheCards_2016.December.24.csv").toString());
+    ui->fullCardListLocationLineEdit->setText(Config.value("Full Card List for Deckbox Import", "/mtg/DeckBoxFullCardList.csv").toString());
+    ui->imageLocationLineEdit->setText(Config.value("Image Storage Location", "/mtg/images").toString());
+    ui->tradeOutputLineEdit->setText(Config.value("Pucatrade Trades Output", "/mtg/trades.csv").toString());
+    ui->tradeValueThresholdDoubleSpinBox->setValue(Config.value("Trade Minimum Value", "0.10").toDouble());
 }
 
 PCMWindow::~PCMWindow()
 {
+    //Saving Settings
+    QSettings Config;
+    Config.setValue("Oracle Database Location", ui->cardDatabaseLocationLineEdit->text());
+    Config.setValue("Collection Output", ui->collectionOutputLineEdit->text());
+    Config.setValue("Collection Input", ui->collectionSourceLineEdit->text());
+    Config.setValue("Deckbox Price Database", ui->deckBoxPriceInputLineEdit->text());
+    Config.setValue("Full Card List for Deckbox Import", ui->fullCardListLocationLineEdit->text());
+    Config.setValue("Image Storage Location", ui->imageLocationLineEdit->text());
+    Config.setValue("Pucatrade Trades Output", ui->tradeOutputLineEdit->text());
+    Config.setValue("Trade Minimum Value", ui->tradeValueThresholdDoubleSpinBox->value());
+
     fMyTradesOutput.flush();
-    fMyTradesOutput.device()->close();
-    delete fMyTradesOutput.device();
+    if(fMyTradesOutput.device())
+    {
+        fMyTradesOutput.device()->close();
+        delete fMyTradesOutput.device();
+    }
+
     fMyCollectionOutput.flush();
-    fMyCollectionOutput.device()->close();
-    delete fMyCollectionOutput.device();
+    if(fMyCollectionOutput.device())
+    {
+        fMyCollectionOutput.device()->close();
+        delete fMyCollectionOutput.device();
+    }
+
     delete ui->imageLabel;
     delete pMyTCPServer;
     delete ui;
@@ -108,7 +142,7 @@ void PCMWindow::TCPSocketReadReady()
                     fMyCollectionOutput << card.deckBoxInventoryLine(false);
                     fMyCollectionOutput.flush();
                 }
-                else if(qmMyPriceGuide.value(multiverseID, -1) > 0.1)
+                else if(qmMyPriceGuide.value(multiverseID, -1) > ui->tradeValueThresholdDoubleSpinBox->value())
                 {
                     ui->cardAction->setText("TRADE!");
                 }
