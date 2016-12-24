@@ -19,10 +19,10 @@ A tool for speeding sorting of cards between collection, trades and trash
 
 * CSV file to import to Deckbox of the new cards for your collection
 
-* CSV file to import to pucatrade of the new cards for your trading
-
 
 # TODO
+
+* CSV file to import to pucatrade of the new cards for your trading
 
 * White list of cards to keep all coppies of
 
