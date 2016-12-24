@@ -24,8 +24,6 @@ A tool for speeding sorting of cards between collection, trades and trash
 
 # TODO
 
-* Customisable trade/trash threshold
-
 * Customisable quantity of cards to keep
 
 * White list of cards to keep all coppies of
