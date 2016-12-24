@@ -24,8 +24,6 @@ A tool for speeding sorting of cards between collection, trades and trash
 
 # TODO
 
-* Customisable quantity of cards to keep
-
 * White list of cards to keep all coppies of
 
 * White list of cards to never trash, maybe including all reserved list cards (if they can't print more we shouldn't destroy them)

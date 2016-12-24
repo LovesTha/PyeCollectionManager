@@ -41,6 +41,7 @@ PCMWindow::PCMWindow(QWidget *parent) :
     ui->imageLocationLineEdit->setText(Config.value("Image Storage Location", "/mtg/images").toString());
     ui->tradeOutputLineEdit->setText(Config.value("Pucatrade Trades Output", "/mtg/trades.csv").toString());
     ui->tradeValueThresholdDoubleSpinBox->setValue(Config.value("Trade Minimum Value", "0.10").toDouble());
+    ui->quantityToKeepSpinBox->setValue(Config.value("Quantity To Keep", "4").toInt());
 }
 
 PCMWindow::~PCMWindow()
@@ -55,6 +56,7 @@ PCMWindow::~PCMWindow()
     Config.setValue("Image Storage Location", ui->imageLocationLineEdit->text());
     Config.setValue("Pucatrade Trades Output", ui->tradeOutputLineEdit->text());
     Config.setValue("Trade Minimum Value", ui->tradeValueThresholdDoubleSpinBox->value());
+    Config.setValue("Quantity To Keep", ui->quantityToKeepSpinBox->value());
 
     fMyTradesOutput.flush();
     if(fMyTradesOutput.device())
@@ -133,7 +135,7 @@ void PCMWindow::TCPSocketReadReady()
                 int iQuantity = qmMyInventory.value(multiverseID, -1);
                 ui->lcdCollectionQuantity->display(iQuantity);
 
-                if(qmMyInventory.value(multiverseID, -1) < 1)
+                if(qmMyInventory.value(multiverseID, -1) < ui->quantityToKeepSpinBox->value())
                 {
                     //card not in inventory
                     ui->cardAction->setText("KEEP!");
