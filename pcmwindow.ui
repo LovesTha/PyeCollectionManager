@@ -18,13 +18,20 @@
     <item row="1" column="0">
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>1</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="mainTab">
        <attribute name="title">
         <string>Main</string>
        </attribute>
        <layout class="QVBoxLayout" name="verticalLayout">
+        <item alignment="Qt::AlignHCenter">
+         <widget class="QCheckBox" name="cbScanningFoils">
+          <property name="text">
+           <string>Scanning Foils</string>
+          </property>
+         </widget>
+        </item>
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_3">
           <item>

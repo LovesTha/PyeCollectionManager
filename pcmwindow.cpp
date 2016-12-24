@@ -131,24 +131,36 @@ void PCMWindow::TCPSocketReadReady()
                     sMyImageRequested = sImagePath;
                 }
 
-                //double dTmp = qmOracle.value(multiverseID).dValue;
-                int iQuantity = qmMyInventory.value(multiverseID, -1);
-                ui->lcdCollectionQuantity->display(iQuantity);
+                InventoryCard invRegularCard = qmMyRegularInventory.value(multiverseID, InventoryCard(0));
+                InventoryCard invFoilCard    = qmMyFoilInventory   .value(multiverseID, InventoryCard(0));
+                InventoryCard priceCard = qmMyRegularPriceGuide.value(multiverseID, InventoryCard(-1));
+                bool isFoil = ui->cbScanningFoils->isChecked();
+                ui->lcdCollectionQuantity->display((isFoil ? invFoilCard : invRegularCard).iMyCount);
 
-                if(qmMyInventory.value(multiverseID, -1) < ui->quantityToKeepSpinBox->value())
+                if((invFoilCard.iMyCount + invRegularCard.iMyCount < ui->quantityToKeepSpinBox->value()) //we don't have enough of any variant
+                  ||(isFoil && invFoilCard.iMyCount < ui->quantityToKeepSpinBox->value())) //this is a foil, and we don't have enough foils
                 {
                     //card not in inventory
                     ui->cardAction->setText("KEEP!");
-                    qmMyInventory.insert(multiverseID, 1);
+                    if(isFoil)
+                    {
+                        invFoilCard.iMyCount++;
+                        qmMyFoilInventory.insert(multiverseID, invFoilCard);
+                    }
+                    else
+                    {
+                        invRegularCard.iMyCount++;
+                        qmMyRegularInventory.insert(multiverseID, invRegularCard);
+                    }
 
-                    fMyCollectionOutput << card.deckBoxInventoryLine(false);
+                    fMyCollectionOutput << card.deckBoxInventoryLine(isFoil);
                     fMyCollectionOutput.flush();
                 }
-                else if(qmMyPriceGuide.value(multiverseID, -1) > ui->tradeValueThresholdDoubleSpinBox->value())
+                else if(priceCard.dMyMarketPrice > ui->tradeValueThresholdDoubleSpinBox->value())
                 {
                     ui->cardAction->setText("TRADE!");
                 }
-                else if(qmMyPriceGuide.value(multiverseID, -1) < 0.001)
+                else if(priceCard.dMyMarketPrice < 0.001)
                 {
                     ui->cardAction->setText("No Price Data");
                 }
@@ -309,7 +321,28 @@ void InventoryCard::InitOrder(QString sInitLine)
     InitOrderEstablished = true;
 }
 
-InventoryCard::InventoryCard(QString sInitLine)
+InventoryCard::InventoryCard(int Quantity)
+{
+    iMyCount = Quantity;
+    iMyTradelistCount = Quantity;
+    iMyCardNumber = -1;
+    sMyName = "";
+    sMyEdition = "";
+    sMyCondition = "";
+    sMyLanguage = "";
+    sMyRarity = "";
+    bMyFoil = false;
+    bMySigned = false;
+    bMyArtistProof = false;
+    bMyAlteredArt = false;
+    bMyMisprint = false;
+    bMyPromo = false;
+    bMyTextless = false;
+    dMySalePrice = -1;
+    dMyMarketPrice = -1;
+}
+
+InventoryCard::InventoryCard(QString sInitLine) : InventoryCard(-1)
 {
     QStringList elements = sInitLine.split(",");
     if(elements.size() < 17)
@@ -354,13 +387,17 @@ InventoryCard::InventoryCard(QString sInitLine)
 
 void PCMWindow::on_pbOpenCollection_clicked()
 {
-    LoadInventory(&qmMyInventory, ui->collectionSourceLineEdit->text(), true);
-    LoadInventory(&qmMyPriceGuide, ui->deckBoxPriceInputLineEdit->text(), false);
+    LoadInventory(&qmMyRegularInventory, &qmMyFoilInventory, ui->collectionSourceLineEdit->text(), true);
+    LoadInventory(&qmMyRegularPriceGuide, &qmMyFoilPriceGuide, ui->deckBoxPriceInputLineEdit->text(), false);
 }
 
-void PCMWindow::LoadInventory(QMap<quint64, double>* qmInventory, QString sFileSource, bool AddNotMax)
+void PCMWindow::LoadInventory(QMap<quint64, InventoryCard>* qmRegularInventory,
+                              QMap<quint64, InventoryCard>* qmFoilInventory,
+                              QString sFileSource,
+                              bool AddNotMax)
 {
     QFile fInput(sFileSource);
+    QMap<quint64, InventoryCard>* qmRightInventory;
     if(fInput.open(QIODevice::ReadOnly | QIODevice::Text))
     {
         QTextStream in(&fInput);
@@ -370,23 +407,22 @@ void PCMWindow::LoadInventory(QMap<quint64, double>* qmInventory, QString sFileS
         {
             line = in.readLine();
             InventoryCard card(line);
+            qmRightInventory = card.bMyFoil ? qmFoilInventory : qmRegularInventory;
             quint64 iMultiverseID = qmMultiInverse.value(card.sMyName, -1);
             if(iMultiverseID == -1)
                 continue; //we can't handle things that have no multiverse ID
-            if(qmInventory->contains(iMultiverseID))
+            if(qmRightInventory->contains(iMultiverseID))
             {
-                double val;
-
                 if(AddNotMax)
-                    val = qmInventory->value(iMultiverseID) + card.iMyCount;
+                    card.iMyCount = qmRightInventory->value(iMultiverseID, InventoryCard(0)).iMyCount + card.iMyCount;
                 else
-                    val = std::max(qmInventory->value(iMultiverseID), card.dMyMarketPrice);
+                    card.dMyMarketPrice = std::max(qmRightInventory->value(iMultiverseID, InventoryCard(0)).dMyMarketPrice, card.dMyMarketPrice);
 
-                qmInventory->insert(iMultiverseID, val);
+                qmRightInventory->insert(iMultiverseID, card);
             }
             else
             {
-                qmInventory->insert(iMultiverseID, AddNotMax ? card.iMyCount : card.dMyMarketPrice);
+                qmRightInventory->insert(iMultiverseID, AddNotMax ? card.iMyCount : card.dMyMarketPrice);
             }
         }
     }

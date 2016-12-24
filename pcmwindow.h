@@ -19,10 +19,11 @@ class PCMWindow;
 class InventoryCard
 {
 public:
+    InventoryCard(int Quantity);
     InventoryCard(QString sInitLine);
     static void InitOrder(QString sInitLine);
 
-    unsigned int iMyCount, iMyTradelistCount, iMyCardNumber;
+    int iMyCount, iMyTradelistCount, iMyCardNumber;
     QString sMyName, sMyEdition, sMyCondition, sMyLanguage, sMyRarity;
     bool bMyFoil, bMySigned, bMyArtistProof, bMyAlteredArt, bMyMisprint, bMyPromo, bMyTextless;
     double dMySalePrice, dMyMarketPrice;
@@ -57,8 +58,8 @@ private:
     Ui::PCMWindow *ui;
     QTcpServer *pMyTCPServer;
 
-    QMap<quint64, double>        qmMyInventory;
-    QMap<quint64, double>        qmMyPriceGuide;
+    QMap<quint64, InventoryCard>        qmMyRegularInventory, qmMyFoilInventory;
+    QMap<quint64, InventoryCard>        qmMyRegularPriceGuide, qmMyFoilPriceGuide;
     QMap<quint64, QString>    qmMultiverse;
     QMap<QString, quint64>    qmMultiInverse;
     QMap<QString, QString>    qmTheSetCode;
@@ -78,7 +79,7 @@ private:
 
     QTextStream fMyCollectionOutput, fMyTradesOutput;
 
-    void LoadInventory(QMap<quint64, double>* qmInventory, QString sFileSource, bool AddNotMax);
+    void LoadInventory(QMap<quint64, InventoryCard>* qmRegularInventory, QMap<quint64, InventoryCard>* qmFoilInventory, QString sFileSource, bool AddNotMax);
 
 private slots:
     void NewTCPConnection();
