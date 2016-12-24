@@ -30,6 +30,12 @@ PCMWindow::PCMWindow(QWidget *parent) :
 
 PCMWindow::~PCMWindow()
 {
+    fMyTradesOutput.flush();
+    fMyTradesOutput.device()->close();
+    delete fMyTradesOutput.device();
+    fMyCollectionOutput.flush();
+    fMyCollectionOutput.device()->close();
+    delete fMyCollectionOutput.device();
     delete ui->imageLabel;
     delete pMyTCPServer;
     delete ui;
@@ -474,6 +480,8 @@ void PCMWindow::on_pbFullCardListDB_clicked()
     }
 
     fFullCardListOutput.flush();
+    fFullCardListOutput.device()->close();
+    fFullCardListOutput.device()->deleteLater();
 }
 
 /*void PCMWindow::ReadOracle()
