@@ -2,6 +2,12 @@
 #include "ui_pcmwindow.h"
 #include <QTcpSocket>
 #include <QFile>
+#include <QJsonValue>
+#include <QJsonArray>
+#include <QJsonObject>
+#include <QFileInfo>
+#include <QtNetwork>
+#include <map>
 
 PCMWindow::PCMWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -16,6 +22,10 @@ PCMWindow::PCMWindow(QWidget *parent) :
         ui->imageLabel->setText("Couldn't open port 8080, try restarting this application after you have changed something");
     }
     connect(pMyTCPServer, SIGNAL(newConnection()), SLOT(NewTCPConnection()));
+
+    manager = new QNetworkAccessManager();
+    connect(manager, SIGNAL(finished(QNetworkReply*)), this, SLOT(ImageFetchFinished(QNetworkReply*)));
+
 }
 
 PCMWindow::~PCMWindow()
@@ -64,26 +74,39 @@ void PCMWindow::TCPSocketReadReady()
             unsigned int multiverseID = request.takeLast().toInt(&bOk);
             if(bOk)
             {
-                QString stmp = QString("/data/Oracle/pics/%1/%2.full.jpg").arg(qmOracle.value(multiverseID).sSet).arg(multiverseID);
-                QImage qImage(stmp);
-                QPixmap image(QPixmap::fromImage(qImage));
-                image = image.scaled(ui->imageLabel->size(), Qt::AspectRatioMode::KeepAspectRatio, Qt::SmoothTransformation);
-                ui->imageLabel->setPixmap(image);
+                OracleCard card = qmOracle.value(multiverseID);
+                QString sImagePath = card.getImagePath();
+                QFileInfo ImageFileInfo(sImagePath);
+                if(ImageFileInfo.exists() && ImageFileInfo.isFile())
+                {
+                    DisplayImage(sImagePath);
+                }
+                else
+                {
+                    ui->imageLabel->clear();
+                    ui->imageLabel->setText("Fetching Image...");
+                    manager->get(QNetworkRequest(QUrl(card.getImageURL())));
+                    sMyImageRequested = sImagePath;
+                }
+
                 //double dTmp = qmOracle.value(multiverseID).dValue;
-                int iQuantity = qmInventory.value(qmMultiverse.value(multiverseID), -1);
+                int iQuantity = qmMyInventory.value(multiverseID, -1);
                 ui->lcdCollectionQuantity->display(iQuantity);
 
-                if(qmInventory.value(qmMultiverse.value(multiverseID), -1) < 1)
+                if(qmMyInventory.value(multiverseID, -1) < 1)
                 {
                     //card not in inventory
                     ui->cardAction->setText("KEEP!");
-                    qmInventory.insert(qmMultiverse.value(multiverseID), 1);
+                    qmMyInventory.insert(multiverseID, 1);
+
+                    fMyCollectionOutput << card.deckBoxInventoryLine(false);
+                    fMyCollectionOutput.flush();
                 }
-                else if(qmOracle.value(multiverseID).dValue > 0.1)
+                else if(qmMyPriceGuide.value(multiverseID, -1) > 0.1)
                 {
                     ui->cardAction->setText("TRADE!");
                 }
-                else if(qmOracle.value(multiverseID).dValue < 0.001)
+                else if(qmMyPriceGuide.value(multiverseID, -1) < 0.001)
                 {
                     ui->cardAction->setText("No Price Data");
                 }
@@ -100,9 +123,67 @@ void PCMWindow::TCPSocketReadReady()
     }
 }
 
+QString OracleCard::deckBoxInventoryLine(bool Foil) const
+{
+    QString sInventory("1,0,%1,%2,%3,Near Mint,English,%4,,,,,,,,\n");
+    QString sName = sNameEn;
+    if(sName.at(0) != '\"') //only if it doesn't start with a " already
+        sName = sName.replace(QRegExp("\""), "\"\""); //some names include " in them, deckbox wants those replaced with a pair of ""
+    //sName = sName.replace(QRegExp("[\?\!]"), "");
+    if(sName == "Kill! Destroy!")
+        sName = "Kill Destroy"; //deckbox stripped the ! from this name, but not others
+    if(sName.at(0) != '\"') //only if it doesn't start with a " already
+        sName = QString("\"") + sName + "\"";
+
+    QString sSetLocal = this->sMySet;
+    if(sSetLocal == QString("Planechase 2012 Edition"))
+        sSetLocal = "Planechase 2012";
+    if(sSetLocal == QString("Magic: The Gathering-Commander"))
+        sSetLocal = "Commander";
+    if(sSetLocal == QString("Commander 2013 Edition"))
+        sSetLocal = "Commander 2013";
+    if(sSetLocal == QString("Magic: The Gathering—Conspiracy"))
+        sSetLocal = "Conspiracy";
+    if(sSetLocal == QString("Modern Masters Edition"))
+        sSetLocal = "Modern Masters";
+    sSetLocal == sSetLocal.replace(QRegExp(" \\([0-9][0-9][0-9][0-9]\\)"), "");
+    if(sSetLocal.at(0) != '\"') //only if it doesn't start with a " already
+        sSetLocal = sSetLocal.replace(QRegExp("\""), "\"\""); //some names include " in them, deckbox wants those replaced with a pair of ""
+    sSetLocal = QString("\"") + sSetLocal + "\"";
+
+    sInventory = sInventory.arg(sName).arg(sSetLocal).arg(this->sSequenceNumber).arg(Foil ? "Foil" : ""); //arg 4 is Foil or blank
+    return sInventory;
+}
+
+void PCMWindow::DisplayImage(QString sImagePath)
+{
+    QImage qImage(sImagePath);
+    QPixmap image(QPixmap::fromImage(qImage));
+    image = image.scaled(ui->imageLabel->size(),
+                         Qt::AspectRatioMode::KeepAspectRatio,
+                         Qt::SmoothTransformation);
+    ui->imageLabel->setPixmap(image);
+}
+
+void PCMWindow::ImageFetchFinished(QNetworkReply* reply)
+{
+   //Check for errors first
+   QImage* img2 = new QImage();
+   img2->loadFromData(reply->readAll());
+
+   if(img2->isNull())
+       ui->imageLabel->setText("Image failed to fetch");
+
+   img2->save("/tmp/img.jpg", "JPG", 99);
+
+   img2->save(sMyImageRequested, "JPG", 99);
+   DisplayImage(sMyImageRequested);
+}
+
 QVector<unsigned int> *InventoryCard::pviTheFieldIndexes = 0;
 bool InventoryCard::InitOrderEstablished = false;
 QMap<QString, unsigned int> InventoryCard::qmTheStringIndex;
+QString OracleCard::sImagePath = "/tmp/";
 
 void InventoryCard::InitOrder(QString sInitLine)
 {
@@ -189,7 +270,7 @@ void InventoryCard::InitOrder(QString sInitLine)
 InventoryCard::InventoryCard(QString sInitLine)
 {
     QStringList elements = sInitLine.split(",");
-    if(elements.size() != 17)
+    if(elements.size() < 17)
         return;
 
     if(!InitOrderEstablished)
@@ -207,6 +288,8 @@ InventoryCard::InventoryCard(QString sInitLine)
     iMyCardNumber = sTmp.toInt();
 
     sTmp = elements.at(pviTheFieldIndexes->at(16));
+    if(sTmp.size() > 1 && sTmp.at(0) == '$')
+        sTmp = sTmp.remove(0, 1);
     dMyMarketPrice = sTmp.toFloat();
 
     sTmp = elements.at(pviTheFieldIndexes->at(14));
@@ -229,7 +312,13 @@ InventoryCard::InventoryCard(QString sInitLine)
 
 void PCMWindow::on_pbOpenCollection_clicked()
 {
-    QFile fInput(ui->collectionSourceLineEdit->text());
+    LoadInventory(&qmMyInventory, ui->collectionSourceLineEdit->text(), true);
+    LoadInventory(&qmMyPriceGuide, ui->deckBoxPriceInputLineEdit->text(), false);
+}
+
+void PCMWindow::LoadInventory(QMap<quint64, double>* qmInventory, QString sFileSource, bool AddNotMax)
+{
+    QFile fInput(sFileSource);
     if(fInput.open(QIODevice::ReadOnly | QIODevice::Text))
     {
         QTextStream in(&fInput);
@@ -239,13 +328,23 @@ void PCMWindow::on_pbOpenCollection_clicked()
         {
             line = in.readLine();
             InventoryCard card(line);
-            if(qmInventory.contains(card.sMyName))
+            quint64 iMultiverseID = qmMultiInverse.value(card.sMyName, -1);
+            if(iMultiverseID == -1)
+                continue; //we can't handle things that have no multiverse ID
+            if(qmInventory->contains(iMultiverseID))
             {
-                qmInventory.insert(card.sMyName, qmInventory.value(card.sMyName) + card.iMyCount);
+                double val;
+
+                if(AddNotMax)
+                    val = qmInventory->value(iMultiverseID) + card.iMyCount;
+                else
+                    val = std::max(qmInventory->value(iMultiverseID), card.dMyMarketPrice);
+
+                qmInventory->insert(iMultiverseID, val);
             }
             else
             {
-                qmInventory.insert(card.sMyName, card.iMyCount);
+                qmInventory->insert(iMultiverseID, AddNotMax ? card.iMyCount : card.dMyMarketPrice);
             }
         }
     }
@@ -257,26 +356,127 @@ void PCMWindow::on_pbOpenCollection_clicked()
 
 void PCMWindow::on_pbOpenDatabase_clicked()
 {
+    OracleCard::sImagePath = ui->imageLocationLineEdit->text();
+    unsigned int iNoMID = 0, iNoMCID = 0, iNoSID = 0;
+
     QFile fInput(ui->cardDatabaseLocationLineEdit->text());
     if(fInput.open(QIODevice::ReadOnly | QIODevice::Text))
     {
-        reader.setDevice(&fInput);
+        QJsonDocument jdoc = QJsonDocument::fromJson(fInput.readAll(), &jError);
 
-        if(reader.readNextStartElement())
-        {
-            QString sTmp = reader.name().toString();
-            if(reader.name() == "mtg_carddatabase") ReadOracle();
-            else reader.raiseError(QObject::tr("Not a Gatherer database rip"));
-        }
+        if(jError.error != QJsonParseError::NoError)
+            ui->imageLabel->setText(QObject::tr("Not a json document"));
 
-        if(reader.error())
+        QJsonArray jSets = jdoc.array();
+
+        for(auto&& set: jSets)
         {
-            int PleaseReportErrors = 8;
+            QJsonObject jSet = set.toObject();
+            QJsonArray jCards = jSet["cards"].toArray();
+
+            QString sMCISID;
+            if(jSet["magicCardsInfoCode"].isNull())
+            {
+                iNoSID++;
+                sMCISID = jSet["code"].toString().toLower();
+            }
+            else
+            {
+                sMCISID = jSet["magicCardsInfoCode"].toString();
+            }
+
+            for(auto&& cardIter: jCards)
+            {
+                QJsonObject jCard = cardIter.toObject();
+                OracleCard card;
+
+                if(jCard["multiverseid"].isNull())
+                    iNoMID++;
+                unsigned int iID = jCard["multiverseid"].toInt();
+                card.iMultiverseID = iID;
+
+                if(iID == 0) //some sets, like colectors edition don't have multiverse IDs, we can't use them.
+                    continue;
+
+                QString sName = jCard["name"].toString();
+                card.sNameEn = sName;
+
+                if(jCard["names"].isArray())
+                {
+                    QJsonArray names = jCard["names"].toArray();
+                    if(names.size() == 2)
+                    {
+                        if(jCard["layout"].toString().contains("split")) //BFG
+                        {
+                            card.sNameEn = names.at(0).toString() + " // " + names.at(1).toString();
+                        }
+                    }
+                    if(names.size() > 3)
+                        continue;
+                }
+
+                if(jCard["number"].isNull())
+                    iNoMCID++;
+                else
+                    card.sSequenceNumber = jCard["number"].toString();
+
+                if(card.sSequenceNumber.contains("b") | jCard["mciNumber"].toString().contains("b"))
+                    continue; //second half of a card, not worth having around (messes up DeckBox output)
+
+                //if(card.sNameEn.contains("Kenzo"))
+                    //int iasf = 999;
+
+                card.sMySet = jSet["name"].toString();
+                card.sID  = sMCISID;
+
+                qmMultiverse.insert(iID, sName);
+                qmMultiInverse.insert(sName, iID);
+                qmOracle.insert(iID, card);
+            }
         }
     }
 }
 
-void PCMWindow::ReadOracle()
+void PCMWindow::on_pbFullCardListDB_clicked()
+{
+    int append = 'a';
+    unsigned int i = 999999;
+    QTextStream fFullCardListOutput;
+    QFile *fullCardListFile;
+    for(auto&& pair: qmOracle.toStdMap())
+    {
+        if(i++ > 90000) //hard coded pagination
+        {
+            fFullCardListOutput.flush();
+            fullCardListFile = new QFile(ui->fullCardListLocationLineEdit->text() + append++);
+            fullCardListFile->open(QIODevice::WriteOnly | QIODevice::Text);
+            fFullCardListOutput.setDevice(fullCardListFile);
+            fFullCardListOutput << "Count,Tradelist Count,Name,Edition,Card Number,Condition,Language,Foil,Signed,Artist Proof,Altered Art,Misprint,Promo,Textless,My Price,\n";
+            i = 0;
+        }
+        OracleCard card = pair.second;
+        if(card.sSequenceNumber.contains("b"))
+            continue; //Deckbox doesn't want the second hard of split cards
+        if(card.sNameEn.contains(QString("token"), Qt::CaseInsensitive))
+            continue; //Deckbox doesn't like how we would generate tokens
+        if(card.sNameEn.contains(QString("Big Furry Monster"), Qt::CaseInsensitive))
+            continue; //Deckbox doesn't like how we generate this name
+        if(card.sMySet.contains(QString("Tempest Remastered"), Qt::CaseInsensitive))
+            continue; //Not real cards
+        if(card.sMySet.contains(QString("Vintage Masters"), Qt::CaseInsensitive))
+            continue; //Not real cards
+        if(card.sMySet.contains(QString("Vanguard"), Qt::CaseInsensitive))
+            continue; //Deckbox doesn't like how we would Avatars
+        if(card.sMySet.contains(QString("Masters Edition"), Qt::CaseInsensitive))
+            continue; //Deckbox doesn't like how we would Avatars
+        fFullCardListOutput << card.deckBoxInventoryLine(false);
+        fFullCardListOutput << card.deckBoxInventoryLine(true);
+    }
+
+    fFullCardListOutput.flush();
+}
+
+/*void PCMWindow::ReadOracle()
 {
     while(reader.readNextStartElement())
     {
@@ -352,7 +552,7 @@ void PCMWindow::ReadCard()
 
     qmMultiverse.insert(iID, sName);
     qmOracle.insert(iID, card);
-}
+}*/
 
 void PCMWindow::on_pbOpenOutputs_clicked()
 {
@@ -366,13 +566,31 @@ void PCMWindow::on_pbOpenOutputs_clicked()
         int PleaseHandleNotOpeningFile = 9;
     }
 
-    QFile *collectionFile = new QFile(ui->tradeOutputLineEdit->text());
-    if(collectionFile->open(QIODevice::WriteOnly | QIODevice::Text))
+    QFileInfo collectionFileInfo(ui->collectionOutputLineEdit->text());
+    bool writeHeader = !collectionFileInfo.exists();
+    QFile *collectionFile = new QFile(ui->collectionOutputLineEdit->text());
+    if(collectionFile->open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append))
     {
         fMyCollectionOutput.setDevice(collectionFile);
+        if(writeHeader)
+            fMyCollectionOutput << "Count,Tradelist Count,Name,Edition,Card Number,Condition,Language,Foil,Signed,Artist Proof,Altered Art,Misprint,Promo,Textless,My Price,\n";
+        fMyCollectionOutput.flush();
     }
     else
     {
         int PleaseHandleNotOpeningFile = 9;
     }
 }
+
+QString OracleCard::getImagePath() const
+{
+    QDir path(QString("%1/%2").arg(sImagePath).arg(sID));
+    path.mkpath(".");
+    return QString("%3/%1/%2.jpg").arg(sID).arg(sSequenceNumber).arg(sImagePath);
+}
+
+QString OracleCard::getImageURL() const
+{
+    return QString("http://gatherer.wizards.com/Handlers/Image.ashx?multiverseid=%1&type=card").arg(iMultiverseID);
+}
+

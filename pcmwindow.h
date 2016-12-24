@@ -6,8 +6,10 @@
 #include <QTcpServer>
 #include <QVector>
 #include <QMap>
-#include <QXmlStreamReader>
+#include <QJsonDocument>
+//#include <QXmlStreamReader>
 #include <QFile>
+#include <QNetworkAccessManager>
 
 
 namespace Ui {
@@ -35,8 +37,12 @@ class OracleCard
 {
 public:
     quint64 iMultiverseID;
-    QString sNameEn, sNameDe, sSet;
+    QString sNameEn, sMySet, sID, sSequenceNumber;
     double dValue;
+    static QString sImagePath;
+    QString getImagePath() const;
+    QString getImageURL() const;
+    QString deckBoxInventoryLine(bool Foil) const;
 };
 
 class PCMWindow : public QMainWindow
@@ -51,19 +57,28 @@ private:
     Ui::PCMWindow *ui;
     QTcpServer *pMyTCPServer;
 
-    QMap<QString, int>        qmInventory;
+    QMap<quint64, double>        qmMyInventory;
+    QMap<quint64, double>        qmMyPriceGuide;
     QMap<quint64, QString>    qmMultiverse;
+    QMap<QString, quint64>    qmMultiInverse;
     QMap<QString, QString>    qmTheSetCode;
     QMap<quint64, OracleCard> qmOracle;
 
-    QXmlStreamReader reader;
-    void ReadOracle();
-    void ReadSets();
-    void ReadCards();
-    void ReadSet();
-    void ReadCard();
+    QJsonParseError jError;
+    //QXmlStreamReader reader;
+    //void ReadOracle();
+    //void ReadSets();
+    //void ReadCards();
+    //void ReadSet();
+    //void ReadCard();
+
+    QNetworkAccessManager *manager;
+    QString sMyImageRequested;
+    void DisplayImage(QString);
 
     QTextStream fMyCollectionOutput, fMyTradesOutput;
+
+    void LoadInventory(QMap<quint64, double>* qmInventory, QString sFileSource, bool AddNotMax);
 
 private slots:
     void NewTCPConnection();
@@ -72,6 +87,8 @@ private slots:
     void on_pbOpenCollection_clicked();
     void on_pbOpenDatabase_clicked();
     void on_pbOpenOutputs_clicked();
+    void ImageFetchFinished(QNetworkReply* reply);
+    void on_pbFullCardListDB_clicked();
 };
 
 #endif // PCMWINDOW_H

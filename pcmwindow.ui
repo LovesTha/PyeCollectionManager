@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>469</width>
+    <width>891</width>
     <height>431</height>
    </rect>
   </property>
@@ -18,7 +18,7 @@
     <item row="1" column="0">
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>0</number>
+       <number>1</number>
       </property>
       <widget class="QWidget" name="mainTab">
        <attribute name="title">
@@ -160,7 +160,7 @@
           <item row="0" column="1">
            <widget class="QLineEdit" name="collectionSourceLineEdit">
             <property name="text">
-             <string>/data/Downloads/Inventory_LovesTha_2016.April.05.csv</string>
+             <string>/home/gareth/mtg/Inventory_LovesTha_2016.December.24.csv</string>
             </property>
            </widget>
           </item>
@@ -174,7 +174,7 @@
           <item row="1" column="1">
            <widget class="QLineEdit" name="tradeOutputLineEdit">
             <property name="text">
-             <string>/data/trades.csv</string>
+             <string>/home/gareth/mtg/trades.csv</string>
             </property>
            </widget>
           </item>
@@ -188,21 +188,63 @@
           <item row="3" column="1">
            <widget class="QLineEdit" name="collectionOutputLineEdit">
             <property name="text">
-             <string>/data/collection.csv</string>
+             <string>/home/gareth/mtg/collection.csv</string>
             </property>
            </widget>
           </item>
           <item row="4" column="0">
            <widget class="QLabel" name="cardDatabaseLocationLabel">
             <property name="text">
-             <string>CardDatabaseLocation</string>
+             <string>Card Database Location</string>
             </property>
            </widget>
           </item>
           <item row="4" column="1">
            <widget class="QLineEdit" name="cardDatabaseLocationLineEdit">
             <property name="text">
-             <string>/data/Oracle/CompleteEnDe.xml</string>
+             <string>/home/gareth/mtg/AllSetsArray.json</string>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="0">
+           <widget class="QLabel" name="imageLocationLabel">
+            <property name="text">
+             <string>Image Location</string>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="1">
+           <widget class="QLineEdit" name="imageLocationLineEdit">
+            <property name="text">
+             <string>/home/gareth/mtg/images</string>
+            </property>
+           </widget>
+          </item>
+          <item row="6" column="0">
+           <widget class="QLabel" name="fullCardListLocationLabel">
+            <property name="text">
+             <string>Full Card List Location</string>
+            </property>
+           </widget>
+          </item>
+          <item row="6" column="1">
+           <widget class="QLineEdit" name="fullCardListLocationLineEdit">
+            <property name="text">
+             <string>/home/gareth/mtg/DeckBoxFullCardList.csv</string>
+            </property>
+           </widget>
+          </item>
+          <item row="7" column="0">
+           <widget class="QLabel" name="deckBoxPriceInputLabel">
+            <property name="text">
+             <string>DeckBox Price Input</string>
+            </property>
+           </widget>
+          </item>
+          <item row="7" column="1">
+           <widget class="QLineEdit" name="deckBoxPriceInputLineEdit">
+            <property name="text">
+             <string>/home/gareth/mtg/AllTheCards_2016.December.24.csv</string>
             </property>
            </widget>
           </item>
@@ -234,6 +276,13 @@
             </property>
            </widget>
           </item>
+          <item>
+           <widget class="QPushButton" name="pbFullCardListDB">
+            <property name="text">
+             <string>Full Card List For DeckBox</string>
+            </property>
+           </widget>
+          </item>
          </layout>
         </item>
        </layout>
@@ -247,8 +296,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>469</width>
-     <height>25</height>
+     <width>891</width>
+     <height>19</height>
     </rect>
    </property>
   </widget>
