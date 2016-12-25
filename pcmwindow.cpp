@@ -16,6 +16,9 @@ PCMWindow::PCMWindow(QWidget *parent) :
         ui->imageLabel->setText("Couldn't open port 8080, try restarting this application after you have changed something");
     }
     connect(pMyTCPServer, SIGNAL(newConnection()), SLOT(NewTCPConnection()));
+
+
+
 }
 
 PCMWindow::~PCMWindow()
@@ -64,32 +67,57 @@ void PCMWindow::TCPSocketReadReady()
             unsigned int multiverseID = request.takeLast().toInt(&bOk);
             if(bOk)
             {
-                QString stmp = QString("/data/Oracle/pics/%1/%2.full.jpg").arg(qmOracle.value(multiverseID).sSet).arg(multiverseID);
+                QString sCardName = myOracle.CardNameFromMultiverseID(multiverseID);
+                OracleCard card = myOracle.CardFromMultiverseID(multiverseID);
+                QString stmp = QString("/data/Oracle/pics/%1/%2.full.jpg").arg(card.sSet).arg(multiverseID);
                 QImage qImage(stmp);
                 QPixmap image(QPixmap::fromImage(qImage));
                 image = image.scaled(ui->imageLabel->size(), Qt::AspectRatioMode::KeepAspectRatio, Qt::SmoothTransformation);
                 ui->imageLabel->setPixmap(image);
                 //double dTmp = qmOracle.value(multiverseID).dValue;
-                int iQuantity = qmInventory.value(qmMultiverse.value(multiverseID), -1);
+                int iQuantity = qmInventory.value(sCardName, -1);
                 ui->lcdCollectionQuantity->display(iQuantity);
 
-                if(qmInventory.value(qmMultiverse.value(multiverseID), -1) < 1)
+                if((qmInventory.value(sCardName, -1) < 1)
+                        | ui->cbCollectionForce->isChecked())
                 {
                     //card not in inventory
                     ui->cardAction->setText("KEEP!");
-                    qmInventory.insert(qmMultiverse.value(multiverseID), 1);
+                    mySound.setMedia(QUrl::fromLocalFile("/home/gareth/PyeCollectionManager/lock.wav"));
+                    mySound.play();
+                    //Count,Tradelist Count,Name,Edition,Card Number,Condition,Language,Foil,Signed,Artist Proof,Altered Art,Misprint,Promo,Textless,My Price
+                    //fMyCollectionOutput << "1,0,\"" << qmOracle.value(multiverseID).sNameEn << "\"," << qmTheSetCode.value(qmOracle.value(multiverseID).sSet) << "," << qmOracle.value(multiverseID).iSetID << ",Near Mint,English,,,,,,,,\n";
+                    fMyCollectionOutput << "1,\"" << card.sNameEn << "\"," << myOracle.SetNameFromSetCode(card.sSet) << ",Near Mint,";
+                    if(ui->cbScanningFoils->isChecked())
+                        fMyCollectionOutput << "Foil";
+                    fMyCollectionOutput << "\n";
+                    fMyCollectionOutput.flush();
+                    qmInventory.insert(sCardName, 1);
                 }
-                else if(qmOracle.value(multiverseID).dValue > 0.1)
+                else if(card.dValue > ui->sbTradeThreshold->value())
                 {
                     ui->cardAction->setText("TRADE!");
+                    mySound.setMedia(QUrl::fromLocalFile("/home/gareth/PyeCollectionManager/coins.wav"));
+                    mySound.play();
+                    fMyTradesOutput << "1,\"" << card.sNameEn << "\"," << myOracle.SetNameFromSetCode(card.sSet) << ",Near Mint,English,";
+                    if(ui->cbScanningFoils->isChecked())
+                        fMyTradesOutput << "Foil";
+                    fMyTradesOutput << "\n";
+                    fMyTradesOutput.flush();
                 }
-                else if(qmOracle.value(multiverseID).dValue < 0.001)
+                else if(card.dValue < 0.001)
                 {
                     ui->cardAction->setText("No Price Data");
+                    mySound.setMedia(QUrl::fromLocalFile("/home/gareth/PyeCollectionManager/weird.wav"));
+                    mySound.play();
+
                 }
                 else
                 {
                     ui->cardAction->setText("trash");
+                    mySound.setMedia(QUrl::fromLocalFile("/home/gareth/PyeCollectionManager/trashcan.wav"));
+                    mySound.play();
+
                 }
             }
             else
@@ -100,14 +128,14 @@ void PCMWindow::TCPSocketReadReady()
     }
 }
 
-QVector<unsigned int> *InventoryCard::pviTheFieldIndexes = 0;
+QVector<int> *InventoryCard::pviTheFieldIndexes = 0;
 bool InventoryCard::InitOrderEstablished = false;
 QMap<QString, unsigned int> InventoryCard::qmTheStringIndex;
 
 void InventoryCard::InitOrder(QString sInitLine)
 {
-    if(pviTheFieldIndexes == 0) pviTheFieldIndexes = new QVector<unsigned int>;
-    for(int i = 0; i < 17; ++i) pviTheFieldIndexes->append(i);
+    if(pviTheFieldIndexes == 0) pviTheFieldIndexes = new QVector<int>;
+    for(int i = 0; i < 17; ++i) pviTheFieldIndexes->append(-1);
 
     QStringList elements = sInitLine.split(",");
     for(unsigned int iIndex = 0; !elements.isEmpty(); ++iIndex)
@@ -189,7 +217,7 @@ void InventoryCard::InitOrder(QString sInitLine)
 InventoryCard::InventoryCard(QString sInitLine)
 {
     QStringList elements = sInitLine.split(",");
-    if(elements.size() != 17)
+    if(elements.size() < 15)
         return;
 
     if(!InitOrderEstablished)
@@ -197,34 +225,90 @@ InventoryCard::InventoryCard(QString sInitLine)
 
     QString sTmp;
 
-    sTmp = elements.at(pviTheFieldIndexes->at(0));
-    iMyCount = sTmp.toInt();
+    if(pviTheFieldIndexes->at(0) > -1)
+        iMyCount = elements.at(pviTheFieldIndexes->at(0)).toInt();
+    else
+        iMyCount = 0;
 
-    sTmp = elements.at(pviTheFieldIndexes->at(1));
-    iMyTradelistCount = sTmp.toInt();
+    if(pviTheFieldIndexes->at(1) > -1)
+        iMyTradelistCount = elements.at(pviTheFieldIndexes->at(1)).toInt();
+    else
+        iMyTradelistCount = 0;
 
-    sTmp = elements.at(pviTheFieldIndexes->at(4));
-    iMyCardNumber = sTmp.toInt();
+    if(pviTheFieldIndexes->at(4) > -1)
+        iMyCardNumber = elements.at(pviTheFieldIndexes->at(4)).toInt();
+    else
+        iMyCardNumber = 0;
 
-    sTmp = elements.at(pviTheFieldIndexes->at(16));
-    dMyMarketPrice = sTmp.toFloat();
+    if(pviTheFieldIndexes->at(16) > -1)
+        dMyMarketPrice =  elements.at(pviTheFieldIndexes->at(16)).toFloat();
+    else
+        dMyMarketPrice = 0;
 
-    sTmp = elements.at(pviTheFieldIndexes->at(14));
-    dMySalePrice = sTmp.toFloat();
+    if(pviTheFieldIndexes->at(14) > -1)
+        dMySalePrice = elements.at(pviTheFieldIndexes->at(14)).toFloat();
+    else
+        dMySalePrice = 0;
 
-    sMyName      = elements.at(pviTheFieldIndexes->at(2));
-    sMyEdition   = elements.at(pviTheFieldIndexes->at(3));
-    sMyCondition = elements.at(pviTheFieldIndexes->at(5));
-    sMyLanguage  = elements.at(pviTheFieldIndexes->at(6));
-    sMyRarity    = elements.at(pviTheFieldIndexes->at(15));
+    if(pviTheFieldIndexes->at(2) > -1)
+        sMyName      = elements.at(pviTheFieldIndexes->at(2));
+    else
+        dMyMarketPrice = 0;
 
-    bMyFoil        = !elements.at(pviTheFieldIndexes->at(7)).isEmpty();
-    bMySigned      = !elements.at(pviTheFieldIndexes->at(8)).isEmpty();
-    bMyArtistProof = !elements.at(pviTheFieldIndexes->at(9)).isEmpty();
-    bMyAlteredArt  = !elements.at(pviTheFieldIndexes->at(10)).isEmpty();
-    bMyMisprint    = !elements.at(pviTheFieldIndexes->at(11)).isEmpty();
-    bMyPromo       = !elements.at(pviTheFieldIndexes->at(12)).isEmpty();
-    bMyTextless    = !elements.at(pviTheFieldIndexes->at(13)).isEmpty();
+    if(pviTheFieldIndexes->at(3) > -1)
+        sMyEdition   = elements.at(pviTheFieldIndexes->at(3));
+    else
+        sMyEdition = "Unknown";
+
+    if(pviTheFieldIndexes->at(5) > -1)
+        sMyCondition = elements.at(pviTheFieldIndexes->at(5));
+    else
+        sMyCondition = "Near Mint";
+
+    if(pviTheFieldIndexes->at(6) > -1)
+        sMyLanguage  = elements.at(pviTheFieldIndexes->at(6));
+    else
+        sMyLanguage = "English";
+
+    if(pviTheFieldIndexes->at(15) > -1)
+        sMyRarity    = elements.at(pviTheFieldIndexes->at(15));
+    else
+        sMyRarity = "Special";
+
+    if(pviTheFieldIndexes->at(7) > -1)
+        bMyFoil        = !elements.at(pviTheFieldIndexes->at(7)).isEmpty();
+    else
+        bMyFoil = false;
+
+    if(pviTheFieldIndexes->at(8) > -1)
+        bMySigned      = !elements.at(pviTheFieldIndexes->at(8)).isEmpty();
+    else
+        bMySigned = false;
+
+    if(pviTheFieldIndexes->at(9) > -1)
+        bMyArtistProof = !elements.at(pviTheFieldIndexes->at(9)).isEmpty();
+    else
+        bMyArtistProof = false;
+
+    if(pviTheFieldIndexes->at(10) > -1)
+        bMyAlteredArt  = !elements.at(pviTheFieldIndexes->at(10)).isEmpty();
+    else
+        bMyAlteredArt = false;
+
+    if(pviTheFieldIndexes->at(11) > -1)
+        bMyMisprint    = !elements.at(pviTheFieldIndexes->at(11)).isEmpty();
+    else
+        bMyMisprint = false;
+
+    if(pviTheFieldIndexes->at(12) > -1)
+        bMyPromo       = !elements.at(pviTheFieldIndexes->at(12)).isEmpty();
+    else
+        bMyPromo = false;
+
+    if(pviTheFieldIndexes->at(13) > -1)
+        bMyTextless    = !elements.at(pviTheFieldIndexes->at(13)).isEmpty();
+    else
+        bMyTextless = false;
 }
 
 void PCMWindow::on_pbOpenCollection_clicked()
@@ -251,128 +335,50 @@ void PCMWindow::on_pbOpenCollection_clicked()
     }
     else
     {
-        int PleaseHandleNotOpeningFile = 9;
+        ui->statusBar->showMessage("Collection not loaded, does the file exist?");
     }
 }
 
 void PCMWindow::on_pbOpenDatabase_clicked()
 {
-    QFile fInput(ui->cardDatabaseLocationLineEdit->text());
-    if(fInput.open(QIODevice::ReadOnly | QIODevice::Text))
-    {
-        reader.setDevice(&fInput);
-
-        if(reader.readNextStartElement())
-        {
-            QString sTmp = reader.name().toString();
-            if(reader.name() == "mtg_carddatabase") ReadOracle();
-            else reader.raiseError(QObject::tr("Not a Gatherer database rip"));
-        }
-
-        if(reader.error())
-        {
-            int PleaseReportErrors = 8;
-        }
-    }
+    ui->statusBar->showMessage(myOracle.OpenFile(ui->cardDatabaseLocationLineEdit->text()));
 }
 
-void PCMWindow::ReadOracle()
-{
-    while(reader.readNextStartElement())
-    {
-        if(reader.name() == "sets") ReadSets();
-        else if(reader.name() == "cards") ReadCards();
-        else reader.skipCurrentElement();
-    }
-}
-
-void PCMWindow::ReadSets()
-{
-    while(reader.readNextStartElement())
-    {
-        if(reader.name() == "set") ReadSet();
-        else reader.skipCurrentElement();
-    }
-}
-
-void PCMWindow::ReadSet()
-{
-    QString sName, sCode;
-    while(reader.readNextStartElement())
-    {
-        if(reader.name() == "name")
-            sName = reader.readElementText();
-        else if(reader.name() == "code")
-            sCode = reader.readElementText();
-        else reader.skipCurrentElement();
-    }
-
-    qmTheSetCode.insert(sCode, sName);
-}
-
-void PCMWindow::ReadCards()
-{
-    while(reader.readNextStartElement())
-    {
-        QString sTmp = reader.name().toString();
-        if(reader.name() == "card") ReadCard();
-        else reader.skipCurrentElement();
-    }
-}
-
-void PCMWindow::ReadCard()
-{
-    QString sName, sSet, sNameDe;
-    quint64 iID, iNumber;
-    double dValue = -1;
-    while(reader.readNextStartElement())
-    {
-        QString stmp = reader.name().toString();
-        if(reader.name() == "id")
-            iID     = reader.readElementText().toInt();
-        else if(reader.name() == "set")
-            sSet    = reader.readElementText();
-        else if(reader.name() == "name")
-            sName   = reader.readElementText();
-        else if(reader.name() == "number")
-            iNumber = reader.readElementText().toInt();
-        else if(reader.name() == "name_DE")
-            sNameDe = reader.readElementText();
-        else if(reader.name() == "pricing_mid")
-            dValue  = reader.readElementText().toDouble();
-        else reader.skipCurrentElement();
-    }
-
-    OracleCard card;
-    card.iMultiverseID = iID;
-    card.sNameDe = sNameDe;
-    card.sNameEn = sName;
-    card.sSet = sSet;
-    card.dValue = dValue;
-
-    qmMultiverse.insert(iID, sName);
-    qmOracle.insert(iID, card);
-}
 
 void PCMWindow::on_pbOpenOutputs_clicked()
 {
     QFile *tradeFile = new QFile(ui->tradeOutputLineEdit->text());
-    if(tradeFile->open(QIODevice::WriteOnly | QIODevice::Text))
+    bool tradesExist = false, collectionExists = false;
+    if(tradeFile->exists())
+    {
+        tradesExist = true;
+    }
+    if(tradeFile->open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append))
     {
         fMyTradesOutput.setDevice(tradeFile);
+        fMyTradesOutput.setCodec("UTF-8");
+        if(!tradesExist)
+            fMyTradesOutput << "Count,Name,Edition,Condition,Language,Foil\n";
     }
     else
     {
-        int PleaseHandleNotOpeningFile = 9;
+        ui->statusBar->showMessage("Trades output file could not be opened, please check you have permission to write to that file/folder.");
     }
 
-    QFile *collectionFile = new QFile(ui->tradeOutputLineEdit->text());
-    if(collectionFile->open(QIODevice::WriteOnly | QIODevice::Text))
+    QFile *collectionFile = new QFile(ui->collectionOutputLineEdit->text());
+    if(collectionFile->exists())
+    {
+        collectionExists = true;
+    }
+    if(collectionFile->open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append))
     {
         fMyCollectionOutput.setDevice(collectionFile);
+        fMyCollectionOutput.setCodec("UTF-8");
+        if(!collectionExists)
+            fMyCollectionOutput << "Count,Name,Edition,Condition,Foil\n";
     }
     else
     {
-        int PleaseHandleNotOpeningFile = 9;
+        ui->statusBar->showMessage("Collection output file could not be opened, please check you have permission to write to that file/folder.");
     }
 }

@@ -6,8 +6,9 @@
 #include <QTcpServer>
 #include <QVector>
 #include <QMap>
-#include <QXmlStreamReader>
 #include <QFile>
+#include <QMediaPlayer>
+#include "../GLib/oracle.h"
 
 
 namespace Ui {
@@ -28,16 +29,9 @@ public:
 
 private:
     static bool InitOrderEstablished;
-    static QVector<unsigned int> *pviTheFieldIndexes;
+    static QVector<int> *pviTheFieldIndexes;
 };
 
-class OracleCard
-{
-public:
-    quint64 iMultiverseID;
-    QString sNameEn, sNameDe, sSet;
-    double dValue;
-};
 
 class PCMWindow : public QMainWindow
 {
@@ -52,18 +46,12 @@ private:
     QTcpServer *pMyTCPServer;
 
     QMap<QString, int>        qmInventory;
-    QMap<quint64, QString>    qmMultiverse;
-    QMap<QString, QString>    qmTheSetCode;
-    QMap<quint64, OracleCard> qmOracle;
-
-    QXmlStreamReader reader;
-    void ReadOracle();
-    void ReadSets();
-    void ReadCards();
-    void ReadSet();
-    void ReadCard();
+    Oracle myOracle;
 
     QTextStream fMyCollectionOutput, fMyTradesOutput;
+
+    //Sounds
+    QMediaPlayer mySound;
 
 private slots:
     void NewTCPConnection();

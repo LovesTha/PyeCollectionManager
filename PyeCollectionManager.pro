@@ -4,7 +4,7 @@
 #
 #-------------------------------------------------
 
-QT       += core gui network xml
+QT       += core gui network xml multimedia sql
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -13,8 +13,10 @@ TEMPLATE = app
 
 
 SOURCES += main.cpp\
-        pcmwindow.cpp
+        pcmwindow.cpp \
+    ../GLib/oracle.cpp
 
-HEADERS  += pcmwindow.h
+HEADERS  += pcmwindow.h \
+    ../GLib/oracle.h
 
 FORMS    += pcmwindow.ui

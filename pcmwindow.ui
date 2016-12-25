@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>469</width>
-    <height>431</height>
+    <width>891</width>
+    <height>394</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -57,6 +57,70 @@
              <set>Qt::AlignCenter</set>
             </property>
            </widget>
+          </item>
+          <item>
+           <layout class="QVBoxLayout" name="verticalLayout_4">
+            <item>
+             <spacer name="verticalSpacer_2">
+              <property name="orientation">
+               <enum>Qt::Vertical</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>20</width>
+                <height>40</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="cbScanningFoils">
+              <property name="text">
+               <string>Scanning Foils</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="cbCollectionForce">
+              <property name="text">
+               <string>Always Scan to Colleciton</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="label_2">
+              <property name="text">
+               <string>Trade Value Threshold $:</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QDoubleSpinBox" name="sbTradeThreshold">
+              <property name="minimum">
+               <double>0.010000000000000</double>
+              </property>
+              <property name="singleStep">
+               <double>0.100000000000000</double>
+              </property>
+              <property name="value">
+               <double>0.250000000000000</double>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <spacer name="verticalSpacer">
+              <property name="orientation">
+               <enum>Qt::Vertical</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>20</width>
+                <height>40</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+           </layout>
           </item>
          </layout>
         </item>
@@ -116,13 +180,6 @@
             </property>
             <property name="text">
              <string>No Card Detected</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="pbAddToCollectionAnyway">
-            <property name="text">
-             <string>Add To Collection Anyway</string>
             </property>
            </widget>
           </item>
@@ -202,7 +259,7 @@
           <item row="4" column="1">
            <widget class="QLineEdit" name="cardDatabaseLocationLineEdit">
             <property name="text">
-             <string>/data/Oracle/CompleteEnDe.xml</string>
+             <string>/data/Oracle/FullOracleWithPrices2016-04-15.xml</string>
             </property>
            </widget>
           </item>
@@ -247,7 +304,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>469</width>
+     <width>891</width>
      <height>25</height>
     </rect>
    </property>
