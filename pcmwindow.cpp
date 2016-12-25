@@ -42,6 +42,10 @@ PCMWindow::PCMWindow(QWidget *parent) :
     ui->tradeOutputLineEdit->setText(Config.value("Pucatrade Trades Output", "/mtg/trades.csv").toString());
     ui->tradeValueThresholdDoubleSpinBox->setValue(Config.value("Trade Minimum Value", "0.10").toDouble());
     ui->quantityToKeepSpinBox->setValue(Config.value("Quantity To Keep", "4").toInt());
+
+    on_pbOpenDatabase_clicked();
+    on_pbOpenOutputs_clicked();
+    on_pbOpenCollection_clicked();
 }
 
 PCMWindow::~PCMWindow()
@@ -106,7 +110,7 @@ void PCMWindow::TCPSocketReadReady()
     while(!elements.isEmpty())
     {
         QString item = elements.takeFirst();
-        if(item.compare("GET",Qt::CaseInsensitive) == 0)
+        if(qmOracle.size() > 100 && item.compare("GET",Qt::CaseInsensitive) == 0)
         {
             //yay it's a card request
             if(elements.isEmpty()) continue;
@@ -161,7 +165,7 @@ void PCMWindow::TCPSocketReadReady()
                 else if(priceCard.dMyMarketPrice > ui->tradeValueThresholdDoubleSpinBox->value())
                 {
                     ui->cardAction->setText("TRADE!");
-                    mySound.setMedia(QUrl::fromLocalFile("/home/gareth/PyeCollectionManager/coins.wav"));
+                    mySound.setMedia(QUrl::fromLocalFile("../PyeCollectionManager/coins.wav"));
                     mySound.play();
                     fMyTradesOutput << "1,\"" << card.sNameEn << "\",\"" << card.sMySet << "\",Near Mint,English,";
                     if(isFoil)
@@ -172,13 +176,13 @@ void PCMWindow::TCPSocketReadReady()
                 else if(priceCard.dMyMarketPrice < 0.001)
                 {
                     ui->cardAction->setText("No Price Data");
-                    mySound.setMedia(QUrl::fromLocalFile("/home/gareth/PyeCollectionManager/weird.wav"));
+                    mySound.setMedia(QUrl::fromLocalFile("../PyeCollectionManager/weird.wav"));
                     mySound.play();
                 }
                 else
                 {
                     ui->cardAction->setText("trash");
-                    mySound.setMedia(QUrl::fromLocalFile("/home/gareth/PyeCollectionManager/trashcan.wav"));
+                    mySound.setMedia(QUrl::fromLocalFile("../PyeCollectionManager/trashcan.wav"));
                     mySound.play();
                 }
             }
@@ -452,6 +456,11 @@ InventoryCard::InventoryCard(QString sInitLine) : InventoryCard(-1)
 
 void PCMWindow::on_pbOpenCollection_clicked()
 {
+    qmMyRegularInventory.clear();
+    qmMyFoilInventory.clear();
+    qmMyRegularPriceGuide.clear();
+    qmMyFoilPriceGuide.clear();
+
     LoadInventory(&qmMyRegularInventory, &qmMyFoilInventory, ui->collectionSourceLineEdit->text(), true);
     LoadInventory(&qmMyRegularPriceGuide, &qmMyFoilPriceGuide, ui->deckBoxPriceInputLineEdit->text(), false);
 }
@@ -500,6 +509,10 @@ void PCMWindow::LoadInventory(QMap<quint64, InventoryCard>* qmRegularInventory,
 
 void PCMWindow::on_pbOpenDatabase_clicked()
 {
+    qmMultiverse.clear();
+    qmMultiInverse.clear();
+    qmOracle.clear();
+
     OracleCard::sImagePath = ui->imageLocationLineEdit->text();
     unsigned int iNoMID = 0, iNoMCID = 0, iNoSID = 0;
 
@@ -702,6 +715,20 @@ void PCMWindow::ReadCard()
 
 void PCMWindow::on_pbOpenOutputs_clicked()
 {
+    if(fMyCollectionOutput.device())
+    {
+        fMyCollectionOutput.flush();
+        fMyCollectionOutput.device()->close();
+        delete fMyCollectionOutput.device();
+    }
+
+    if(fMyTradesOutput.device())
+    {
+        fMyTradesOutput.flush();
+        fMyTradesOutput.device()->close();
+        delete fMyTradesOutput.device();
+    }
+
     QFile *tradeFile = new QFile(ui->tradeOutputLineEdit->text());
     if(tradeFile->open(QIODevice::WriteOnly | QIODevice::Text))
     {
