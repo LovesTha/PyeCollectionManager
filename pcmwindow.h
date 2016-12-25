@@ -85,6 +85,8 @@ private:
 
     void LoadInventory(QMap<quint64, InventoryCard>* qmRegularInventory, QMap<quint64, InventoryCard>* qmFoilInventory, QString sFileSource, bool AddNotMax);
 
+    void StatusString(QString sMessage, bool bError = false);
+
 private slots:
     void NewTCPConnection();
     void TCPSocketReadReady();

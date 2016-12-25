@@ -88,11 +88,13 @@ void PCMWindow::NewTCPConnection()
         QTcpSocket * socket = pMyTCPServer->nextPendingConnection();
         connect(socket, SIGNAL(readyRead()), SLOT(TCPSocketReadReady()));
         connect(socket, SIGNAL(disconnected()), SLOT(TCPDisconnected()));
+        StatusString(QString("New TCP Connection (%1)").arg(socket->peerAddress().toString()));
     }
 }
 
 void PCMWindow::TCPDisconnected()
 {
+    StatusString("TCP Disconnected");
     QTcpSocket *socket = static_cast<QTcpSocket*>(sender());
     socket->deleteLater();
 }
@@ -120,6 +122,7 @@ void PCMWindow::TCPSocketReadReady()
             unsigned int multiverseID = request.takeLast().toInt(&bOk);
             if(bOk)
             {
+                StatusString(QString("Processing Multiverse ID: %1").arg(multiverseID));
                 OracleCard card = qmOracle.value(multiverseID);
                 QString sImagePath = card.getImagePath();
                 QFileInfo ImageFileInfo(sImagePath);
@@ -131,6 +134,7 @@ void PCMWindow::TCPSocketReadReady()
                 {
                     ui->imageLabel->clear();
                     ui->imageLabel->setText("Fetching Image...");
+                    StatusString("Fetching Image");
                     manager->get(QNetworkRequest(QUrl(card.getImageURL())));
                     sMyImageRequested = sImagePath;
                 }
@@ -146,6 +150,7 @@ void PCMWindow::TCPSocketReadReady()
                 {
                     //card not in inventory
                     ui->cardAction->setText("KEEP!");
+                    StatusString(QString("Keep: %1").arg(invRegularCard.sMyName));
                     mySound.setMedia(QUrl::fromLocalFile("/home/gareth/PyeCollectionManager/lock.wav"));
                     mySound.play();
                     if(isFoil)
@@ -162,9 +167,10 @@ void PCMWindow::TCPSocketReadReady()
                     fMyCollectionOutput << card.deckBoxInventoryLine(isFoil);
                     fMyCollectionOutput.flush();
                 }
-                else if(priceCard.dMyMarketPrice > ui->tradeValueThresholdDoubleSpinBox->value())
+                else if((priceCard.dMyMarketPrice > ui->tradeValueThresholdDoubleSpinBox->value()) | isFoil)
                 {
                     ui->cardAction->setText("TRADE!");
+                    StatusString(QString("Trade: %1 ($%2)").arg(invRegularCard.sMyName).arg((isFoil ? invFoilCard : invRegularCard).dMyMarketPrice));
                     mySound.setMedia(QUrl::fromLocalFile("../PyeCollectionManager/coins.wav"));
                     mySound.play();
                     fMyTradesOutput << "1,\"" << card.sNameEn << "\",\"" << card.sMySet << "\",Near Mint,English,";
@@ -176,19 +182,22 @@ void PCMWindow::TCPSocketReadReady()
                 else if(priceCard.dMyMarketPrice < 0.001)
                 {
                     ui->cardAction->setText("No Price Data");
+                    StatusString(QString("No Price Data for: %1!").arg(invRegularCard.sMyName), true);
                     mySound.setMedia(QUrl::fromLocalFile("../PyeCollectionManager/weird.wav"));
                     mySound.play();
                 }
                 else
                 {
                     ui->cardAction->setText("trash");
+                    StatusString(QString("Trash: %1").arg(invRegularCard.sMyName));
                     mySound.setMedia(QUrl::fromLocalFile("../PyeCollectionManager/trashcan.wav"));
                     mySound.play();
                 }
             }
             else
             {
-                ui->imageLabel->setText("Invalid request");
+                ui->imageLabel->setText("Invalid request");                
+                StatusString("Unrecognised request", true);
             }
         }
     }
@@ -243,9 +252,10 @@ void PCMWindow::ImageFetchFinished(QNetworkReply* reply)
    img2->loadFromData(reply->readAll());
 
    if(img2->isNull())
+   {
        ui->imageLabel->setText("Image failed to fetch");
-
-   img2->save("/tmp/img.jpg", "JPG", 99);
+       StatusString(QString("Failed to load image: %1").arg(sMyImageRequested), true);
+   }
 
    img2->save(sMyImageRequested, "JPG", 99);
    DisplayImage(sMyImageRequested);
@@ -461,7 +471,11 @@ void PCMWindow::on_pbOpenCollection_clicked()
     qmMyRegularPriceGuide.clear();
     qmMyFoilPriceGuide.clear();
 
-    LoadInventory(&qmMyRegularInventory, &qmMyFoilInventory, ui->collectionSourceLineEdit->text(), true);
+    StatusString("Attempting to load exported Deckbox Inventory");
+    LoadInventory(&qmMyRegularInventory, &qmMyFoilInventory, ui->collectionSourceLineEdit->text(), true); //inventory that has been exported from Deckbox
+    StatusString("Attempting to load previous run inventory in Deckbox format");
+    LoadInventory(&qmMyRegularInventory, &qmMyFoilInventory, ui->collectionOutputLineEdit->text(), true); //inventory from previous runs
+    StatusString("Attempting to load exported Deckbox price list input");
     LoadInventory(&qmMyRegularPriceGuide, &qmMyFoilPriceGuide, ui->deckBoxPriceInputLineEdit->text(), false);
 }
 
@@ -482,8 +496,8 @@ void PCMWindow::LoadInventory(QMap<quint64, InventoryCard>* qmRegularInventory,
             line = in.readLine();
             InventoryCard card(line);
             qmRightInventory = card.bMyFoil ? qmFoilInventory : qmRegularInventory;
-            quint64 iMultiverseID = qmMultiInverse.value(card.sMyName, -1);
-            if(iMultiverseID == -1)
+            quint64 iMultiverseID = qmMultiInverse.value(card.sMyName, 0);
+            if(iMultiverseID == 0)
                 continue; //we can't handle things that have no multiverse ID
             if(qmRightInventory->contains(iMultiverseID))
             {
@@ -499,11 +513,14 @@ void PCMWindow::LoadInventory(QMap<quint64, InventoryCard>* qmRegularInventory,
                 qmRightInventory->insert(iMultiverseID, AddNotMax ? card.iMyCount : card.dMyMarketPrice);
             }
         }
+
+        StatusString(QString("Read %1 regular cards").arg(qmRegularInventory->size()));
+        StatusString(QString("Read %1 foil cards").arg(qmFoilInventory->size()));
     }
     else
     {
-        int PleaseHandleNotOpeningFile = 9;
-        ui->statusBar->showMessage("Collection or Pricelist not loaded, does the file exist?");
+        StatusString(QString("Collection or Pricelist not loaded, does the file exist?")
+                     .arg(ui->tradeOutputLineEdit->text()), true);
     }
 }
 
@@ -730,19 +747,20 @@ void PCMWindow::on_pbOpenOutputs_clicked()
     }
 
     QFile *tradeFile = new QFile(ui->tradeOutputLineEdit->text());
-    if(tradeFile->open(QIODevice::WriteOnly | QIODevice::Text))
+    if(tradeFile->open(QIODevice::Text | QIODevice::Append))
     {
         fMyTradesOutput.setDevice(tradeFile);
     }
     else
     {
-        int PleaseHandleNotOpeningFile = 9;
+        StatusString(QString("Could not open output file to store trades: %1")
+                     .arg(ui->tradeOutputLineEdit->text()), true);
     }
 
     QFileInfo collectionFileInfo(ui->collectionOutputLineEdit->text());
     bool writeHeader = !collectionFileInfo.exists();
     QFile *collectionFile = new QFile(ui->collectionOutputLineEdit->text());
-    if(collectionFile->open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append))
+    if(collectionFile->open(QIODevice::Text | QIODevice::Append))
     {
         fMyCollectionOutput.setDevice(collectionFile);
         if(writeHeader)
@@ -751,7 +769,8 @@ void PCMWindow::on_pbOpenOutputs_clicked()
     }
     else
     {
-        int PleaseHandleNotOpeningFile = 9;
+        StatusString(QString("Could not open output file to store collection: %1")
+                     .arg(ui->collectionOutputLineEdit->text()), true);
     }
 }
 
@@ -767,3 +786,12 @@ QString OracleCard::getImageURL() const
     return QString("http://gatherer.wizards.com/Handlers/Image.ashx?multiverseid=%1&type=card").arg(iMultiverseID);
 }
 
+void PCMWindow::StatusString(QString sMessage, bool bError)
+{
+    ui->teStatus->append(QString("<font color=\"%1\">%2</font>\r\n")
+                             .arg(bError ? "red" : "black")
+                             .arg(sMessage));
+
+    if(bError)
+        ui->statusBar->showMessage(sMessage);
+}
