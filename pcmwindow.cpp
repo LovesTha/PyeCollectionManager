@@ -142,6 +142,8 @@ void PCMWindow::TCPSocketReadReady()
                 {
                     //card not in inventory
                     ui->cardAction->setText("KEEP!");
+                    mySound.setMedia(QUrl::fromLocalFile("/home/gareth/PyeCollectionManager/lock.wav"));
+                    mySound.play();
                     if(isFoil)
                     {
                         invFoilCard.iMyCount++;
@@ -159,14 +161,25 @@ void PCMWindow::TCPSocketReadReady()
                 else if(priceCard.dMyMarketPrice > ui->tradeValueThresholdDoubleSpinBox->value())
                 {
                     ui->cardAction->setText("TRADE!");
+                    mySound.setMedia(QUrl::fromLocalFile("/home/gareth/PyeCollectionManager/coins.wav"));
+                    mySound.play();
+                    fMyTradesOutput << "1,\"" << card.sNameEn << "\",\"" << card.sMySet << "\",Near Mint,English,";
+                    if(isFoil)
+                        fMyTradesOutput << "Foil";
+                    fMyTradesOutput << "\n";
+                    fMyTradesOutput.flush();
                 }
                 else if(priceCard.dMyMarketPrice < 0.001)
                 {
                     ui->cardAction->setText("No Price Data");
+                    mySound.setMedia(QUrl::fromLocalFile("/home/gareth/PyeCollectionManager/weird.wav"));
+                    mySound.play();
                 }
                 else
                 {
                     ui->cardAction->setText("trash");
+                    mySound.setMedia(QUrl::fromLocalFile("/home/gareth/PyeCollectionManager/trashcan.wav"));
+                    mySound.play();
                 }
             }
             else
@@ -234,15 +247,15 @@ void PCMWindow::ImageFetchFinished(QNetworkReply* reply)
    DisplayImage(sMyImageRequested);
 }
 
-QVector<unsigned int> *InventoryCard::pviTheFieldIndexes = 0;
+QVector<int> *InventoryCard::pviTheFieldIndexes = 0;
 bool InventoryCard::InitOrderEstablished = false;
 QMap<QString, unsigned int> InventoryCard::qmTheStringIndex;
 QString OracleCard::sImagePath = "/tmp/";
 
 void InventoryCard::InitOrder(QString sInitLine)
 {
-    if(pviTheFieldIndexes == 0) pviTheFieldIndexes = new QVector<unsigned int>;
-    for(int i = 0; i < 17; ++i) pviTheFieldIndexes->append(i);
+    if(pviTheFieldIndexes == 0) pviTheFieldIndexes = new QVector<int>;
+    for(int i = 0; i < 17; ++i) pviTheFieldIndexes->append(-1);
 
     QStringList elements = sInitLine.split(",");
     for(unsigned int iIndex = 0; !elements.isEmpty(); ++iIndex)
@@ -353,36 +366,88 @@ InventoryCard::InventoryCard(QString sInitLine) : InventoryCard(-1)
 
     QString sTmp;
 
-    sTmp = elements.at(pviTheFieldIndexes->at(0));
-    iMyCount = sTmp.toInt();
+    if(pviTheFieldIndexes->at(0) > -1)
+        iMyCount = elements.at(pviTheFieldIndexes->at(0)).toInt();
+    else
+        iMyCount = 0;
 
-    sTmp = elements.at(pviTheFieldIndexes->at(1));
-    iMyTradelistCount = sTmp.toInt();
+    if(pviTheFieldIndexes->at(1) > -1)
+        iMyTradelistCount = elements.at(pviTheFieldIndexes->at(1)).toInt();
+    else
+        iMyTradelistCount = 0;
 
-    sTmp = elements.at(pviTheFieldIndexes->at(4));
-    iMyCardNumber = sTmp.toInt();
+    if(pviTheFieldIndexes->at(4) > -1)
+        iMyCardNumber = elements.at(pviTheFieldIndexes->at(4)).toInt();
+    else
+        iMyCardNumber = 0;
 
-    sTmp = elements.at(pviTheFieldIndexes->at(16));
-    if(sTmp.size() > 1 && sTmp.at(0) == '$')
-        sTmp = sTmp.remove(0, 1);
-    dMyMarketPrice = sTmp.toFloat();
+    if(pviTheFieldIndexes->at(16) > -1)
+        dMyMarketPrice =  elements.at(pviTheFieldIndexes->at(16)).toFloat();
+    else
+        dMyMarketPrice = 0;
 
-    sTmp = elements.at(pviTheFieldIndexes->at(14));
-    dMySalePrice = sTmp.toFloat();
+    if(pviTheFieldIndexes->at(14) > -1)
+        dMySalePrice = elements.at(pviTheFieldIndexes->at(14)).toFloat();
+    else
+        dMySalePrice = 0;
 
-    sMyName      = elements.at(pviTheFieldIndexes->at(2));
-    sMyEdition   = elements.at(pviTheFieldIndexes->at(3));
-    sMyCondition = elements.at(pviTheFieldIndexes->at(5));
-    sMyLanguage  = elements.at(pviTheFieldIndexes->at(6));
-    sMyRarity    = elements.at(pviTheFieldIndexes->at(15));
+    if(pviTheFieldIndexes->at(2) > -1)
+        sMyName      = elements.at(pviTheFieldIndexes->at(2));
+    else
+        dMyMarketPrice = 0;
 
-    bMyFoil        = !elements.at(pviTheFieldIndexes->at(7)).isEmpty();
-    bMySigned      = !elements.at(pviTheFieldIndexes->at(8)).isEmpty();
-    bMyArtistProof = !elements.at(pviTheFieldIndexes->at(9)).isEmpty();
-    bMyAlteredArt  = !elements.at(pviTheFieldIndexes->at(10)).isEmpty();
-    bMyMisprint    = !elements.at(pviTheFieldIndexes->at(11)).isEmpty();
-    bMyPromo       = !elements.at(pviTheFieldIndexes->at(12)).isEmpty();
-    bMyTextless    = !elements.at(pviTheFieldIndexes->at(13)).isEmpty();
+    if(pviTheFieldIndexes->at(3) > -1)
+        sMyEdition   = elements.at(pviTheFieldIndexes->at(3));
+    else
+        sMyEdition = "Unknown";
+    if(pviTheFieldIndexes->at(5) > -1)
+        sMyCondition = elements.at(pviTheFieldIndexes->at(5));
+    else
+        sMyCondition = "Near Mint";
+    if(pviTheFieldIndexes->at(6) > -1)
+        sMyLanguage  = elements.at(pviTheFieldIndexes->at(6));
+    else
+        sMyLanguage = "English";
+
+    if(pviTheFieldIndexes->at(15) > -1)
+        sMyRarity    = elements.at(pviTheFieldIndexes->at(15));
+    else
+        sMyRarity = "Special";
+
+    if(pviTheFieldIndexes->at(7) > -1)
+        bMyFoil        = !elements.at(pviTheFieldIndexes->at(7)).isEmpty();
+    else
+        bMyFoil = false;
+
+    if(pviTheFieldIndexes->at(8) > -1)
+        bMySigned      = !elements.at(pviTheFieldIndexes->at(8)).isEmpty();
+    else
+        bMySigned = false;
+    if(pviTheFieldIndexes->at(9) > -1)
+        bMyArtistProof = !elements.at(pviTheFieldIndexes->at(9)).isEmpty();
+    else
+        bMyArtistProof = false;
+
+    if(pviTheFieldIndexes->at(10) > -1)
+        bMyAlteredArt  = !elements.at(pviTheFieldIndexes->at(10)).isEmpty();
+    else
+        bMyAlteredArt = false;
+
+    if(pviTheFieldIndexes->at(11) > -1)
+        bMyMisprint    = !elements.at(pviTheFieldIndexes->at(11)).isEmpty();
+    else
+        bMyMisprint = false;
+
+    if(pviTheFieldIndexes->at(12) > -1)
+        bMyPromo       = !elements.at(pviTheFieldIndexes->at(12)).isEmpty();
+    else
+        bMyPromo = false;
+
+    if(pviTheFieldIndexes->at(13) > -1)
+        bMyTextless    = !elements.at(pviTheFieldIndexes->at(13)).isEmpty();
+    else
+        bMyTextless = false;
+
 }
 
 void PCMWindow::on_pbOpenCollection_clicked()
@@ -429,6 +494,7 @@ void PCMWindow::LoadInventory(QMap<quint64, InventoryCard>* qmRegularInventory,
     else
     {
         int PleaseHandleNotOpeningFile = 9;
+        ui->statusBar->showMessage("Collection or Pricelist not loaded, does the file exist?");
     }
 }
 

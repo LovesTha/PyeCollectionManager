@@ -10,6 +10,7 @@
 //#include <QXmlStreamReader>
 #include <QFile>
 #include <QNetworkAccessManager>
+#include <QMediaPlayer>
 
 
 namespace Ui {
@@ -31,7 +32,7 @@ public:
 
 private:
     static bool InitOrderEstablished;
-    static QVector<unsigned int> *pviTheFieldIndexes;
+    static QVector<int> *pviTheFieldIndexes;
 };
 
 class OracleCard
@@ -64,6 +65,9 @@ private:
     QMap<QString, quint64>    qmMultiInverse;
     QMap<QString, QString>    qmTheSetCode;
     QMap<quint64, OracleCard> qmOracle;
+
+    //Sounds
+    QMediaPlayer mySound;
 
     QJsonParseError jError;
     //QXmlStreamReader reader;
