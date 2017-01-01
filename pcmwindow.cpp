@@ -766,7 +766,7 @@ void PCMWindow::on_pbOpenOutputs_clicked()
     {
         fMyCollectionOutput.setDevice(collectionFile);
         if(writeHeader)
-            fMyCollectionOutput << "Count,Tradelist Count,Name,Edition,Card Number,Condition,Language,Foil,Signed,Artist Proof,Altered Art,Misprint,Promo,Textless,My Price,\n";
+            fMyCollectionOutput << "Count,Tradelist Count,Name,Edition,Card Number,Condition,Language,Foil,Signed,Artist Proof,Altered Art,Misprint,Promo,Textless,My Price\n";
         fMyCollectionOutput.flush();
     }
     else
