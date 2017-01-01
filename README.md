@@ -17,7 +17,7 @@ A tool for speeding sorting of cards between collection, trades and trash
 
 # Compiling
 
-Using a reasonably recent Qt, something in the mid 5's is required I believe (I personally develop with 5.7), run the following in the project directory:
+Using a reasonably recent Qt, something in the mid 5.7+ is required I believe (I personally develop with 5.7, although 5.6 might work, but Ubuntu's 5.5 doesn't), run the following in the project directory:
 
 qmake
 make
@@ -29,6 +29,12 @@ Execute the following to start the program:
 ./PyeCollectionManager
 
 Check the second tab for important directories & other operations.
+
+If no sounds play try installing all the gstreamer0.1 plugins, at least that is what the Qt binary packages require. If using the ubuntu packages in a future Ubuntu, gstreamer1.0 might be used. For gstreamer0.1 the final thing that got stuff working for me was:
+
+sudo apt-get install libgstreamer0.10-dev libgstreamer-plugins-base0.10-dev
+
+But it is plausible that some of the previous similar things I did are also required.
 
 There are a couple of files that PCM requires for data sources:
 
