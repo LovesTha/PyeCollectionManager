@@ -396,7 +396,10 @@ InventoryCard::InventoryCard(QString sInitLine) : InventoryCard(-1)
         iMyCardNumber = 0;
 
     if(pviTheFieldIndexes->at(16) > -1)
-        dMyMarketPrice =  elements.at(pviTheFieldIndexes->at(16)).toFloat();
+    {
+        QString sTmp = elements.at(pviTheFieldIndexes->at(16));
+        dMyMarketPrice =  sTmp.replace(QRegExp("\\$"),"").toFloat();
+    }
     else
         dMyMarketPrice = 0;
 
