@@ -143,7 +143,7 @@ void PCMWindow::TCPSocketReadReady()
 
                 InventoryCard invRegularCard = qmMyRegularInventory.value(multiverseID, InventoryCard(0));
                 InventoryCard invFoilCard    = qmMyFoilInventory   .value(multiverseID, InventoryCard(0));
-                InventoryCard priceCard = qmMyRegularPriceGuide.value(multiverseID, InventoryCard(-1));
+                InventoryCard priceCard = qmMyRegularPriceGuide.value(multiverseID, InventoryCard(0));
                 bool isFoil = ui->cbScanningFoils->isChecked();
                 ui->lcdCollectionQuantity->display((isFoil ? invFoilCard : invRegularCard).iMyCount);
 
@@ -552,7 +552,7 @@ void PCMWindow::on_pbOpenDatabase_clicked()
             QJsonObject jSet = set.toObject();
             QJsonArray jCards = jSet["cards"].toArray();
 
-            QString sMCISID;
+            QString sMCISID, sGSID;
             if(jSet["magicCardsInfoCode"].isNull())
             {
                 iNoSID++;
@@ -562,6 +562,11 @@ void PCMWindow::on_pbOpenDatabase_clicked()
             {
                 sMCISID = jSet["magicCardsInfoCode"].toString();
             }
+
+            if(jSet["gathererCode"].isNull())
+                sGSID = jSet["code"].toString();
+            else
+                sGSID = jSet["gathererCode"].toString();
 
             for(auto&& cardIter: jCards)
             {
@@ -604,8 +609,10 @@ void PCMWindow::on_pbOpenDatabase_clicked()
                 //if(card.sNameEn.contains("Kenzo"))
                     //int iasf = 999;
 
+                card.cRarity = jCard["rarity"].toString().at(0).toLatin1();
                 card.sMySet = jSet["name"].toString();
-                card.sID  = sMCISID;
+                card.sMCISID = sMCISID;
+                card.sGSID = sGSID;
 
                 qmMultiverse.insert(iID, sName);
                 qmMultiInverse.insert(sName, iID);
@@ -656,84 +663,6 @@ void PCMWindow::on_pbFullCardListDB_clicked()
     fFullCardListOutput.device()->deleteLater();
 }
 
-/*void PCMWindow::ReadOracle()
-{
-    while(reader.readNextStartElement())
-    {
-        if(reader.name() == "sets") ReadSets();
-        else if(reader.name() == "cards") ReadCards();
-        else reader.skipCurrentElement();
-    }
-}
-
-void PCMWindow::ReadSets()
-{
-    while(reader.readNextStartElement())
-    {
-        if(reader.name() == "set") ReadSet();
-        else reader.skipCurrentElement();
-    }
-}
-
-void PCMWindow::ReadSet()
-{
-    QString sName, sCode;
-    while(reader.readNextStartElement())
-    {
-        if(reader.name() == "name")
-            sName = reader.readElementText();
-        else if(reader.name() == "code")
-            sCode = reader.readElementText();
-        else reader.skipCurrentElement();
-    }
-
-    qmTheSetCode.insert(sCode, sName);
-}
-
-void PCMWindow::ReadCards()
-{
-    while(reader.readNextStartElement())
-    {
-        QString sTmp = reader.name().toString();
-        if(reader.name() == "card") ReadCard();
-        else reader.skipCurrentElement();
-    }
-}
-
-void PCMWindow::ReadCard()
-{
-    QString sName, sSet, sNameDe;
-    quint64 iID, iNumber;
-    double dValue = -1;
-    while(reader.readNextStartElement())
-    {
-        QString stmp = reader.name().toString();
-        if(reader.name() == "id")
-            iID     = reader.readElementText().toInt();
-        else if(reader.name() == "set")
-            sSet    = reader.readElementText();
-        else if(reader.name() == "name")
-            sName   = reader.readElementText();
-        else if(reader.name() == "number")
-            iNumber = reader.readElementText().toInt();
-        else if(reader.name() == "name_DE")
-            sNameDe = reader.readElementText();
-        else if(reader.name() == "pricing_mid")
-            dValue  = reader.readElementText().toDouble();
-        else reader.skipCurrentElement();
-    }
-
-    OracleCard card;
-    card.iMultiverseID = iID;
-    card.sNameDe = sNameDe;
-    card.sNameEn = sName;
-    card.sSet = sSet;
-    card.dValue = dValue;
-
-    qmMultiverse.insert(iID, sName);
-    qmOracle.insert(iID, card);
-}*/
-
 void PCMWindow::on_pbOpenOutputs_clicked()
 {
     if(fMyCollectionOutput.device())
@@ -780,14 +709,26 @@ void PCMWindow::on_pbOpenOutputs_clicked()
 
 QString OracleCard::getImagePath() const
 {
-    QDir path(QString("%1/%2").arg(sImagePath).arg(sID));
+    QDir path(QString("%1/%2").arg(sImagePath).arg(sMCISID));
     path.mkpath(".");
-    return QString("%3/%1/%2.jpg").arg(sID).arg(sSequenceNumber).arg(sImagePath);
+    return QString("%3/%1/%2.jpg").arg(sMCISID).arg(sSequenceNumber).arg(sImagePath);
 }
 
 QString OracleCard::getImageURL() const
 {
     return QString("http://gatherer.wizards.com/Handlers/Image.ashx?multiverseid=%1&type=card").arg(iMultiverseID);
+}
+
+QString OracleCard::getLogoPath() const
+{
+    QDir path(QString("%1/%2").arg(sImagePath).arg(sMCISID));
+    path.mkpath(".");
+    return QString("%3/%1/%2.jpg").arg(sMCISID).arg(cRarity).arg(sImagePath);
+}
+
+QString OracleCard::getLogoURL() const
+{
+    return QString("http://gatherer.wizards.com/Handlers/Image.ashx?type=symbol&set=%1&size=large&rarity=%2").arg(sMCISID).arg(cRarity);
 }
 
 void PCMWindow::StatusString(QString sMessage, bool bError)
@@ -802,8 +743,6 @@ void PCMWindow::StatusString(QString sMessage, bool bError)
 
 void PCMWindow::on_soundsLocationLineEdit_textChanged(const QString &arg1)
 {
-    int index = arg1.lastIndexOf('/');
-    int length = arg1.length();
     if(arg1.lastIndexOf('/') == arg1.length() - 1)
     {
         qTrash = QUrl::fromLocalFile(arg1 + "trashcan.wav");
