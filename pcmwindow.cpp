@@ -513,7 +513,7 @@ void PCMWindow::LoadInventory(QMap<quint64, InventoryCard>* qmRegularInventory,
             }
             else
             {
-                qmRightInventory->insert(iMultiverseID, InventoryCard(AddNotMax ? card.iMyCount : card.dMyMarketPrice));
+                qmRightInventory->insert(iMultiverseID, card);
             }
         }
 
