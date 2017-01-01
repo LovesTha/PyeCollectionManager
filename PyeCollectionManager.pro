@@ -13,8 +13,12 @@ TEMPLATE = app
 
 
 SOURCES += main.cpp\
-        pcmwindow.cpp
+        pcmwindow.cpp \
+    inventorycard.cpp \
+    oraclecard.cpp
 
-HEADERS  += pcmwindow.h
+HEADERS  += pcmwindow.h \
+    inventorycard.h \
+    oraclecard.h
 
 FORMS    += pcmwindow.ui

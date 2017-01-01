@@ -12,44 +12,17 @@
 #include <QNetworkAccessManager>
 #include <QMediaPlayer>
 #include <QUrl>
+#include "inventorycard.h"
+#include "oraclecard.h"
 
 
 namespace Ui {
 class PCMWindow;
 }
 
-class InventoryCard
-{
-public:
-    explicit InventoryCard(int Quantity);
-    explicit InventoryCard(QString sInitLine);
-    static void InitOrder(QString sInitLine);
 
-    int iMyCount, iMyTradelistCount, iMyCardNumber;
-    QString sMyName, sMyEdition, sMyCondition, sMyLanguage, sMyRarity;
-    bool bMyFoil, bMySigned, bMyArtistProof, bMyAlteredArt, bMyMisprint, bMyPromo, bMyTextless;
-    double dMySalePrice, dMyMarketPrice;
-    static QMap<QString, unsigned int> qmTheStringIndex;
 
-private:
-    static bool InitOrderEstablished;
-    static QVector<int> *pviTheFieldIndexes;
-};
 
-class OracleCard
-{
-public:
-    quint64 iMultiverseID;
-    QString sNameEn, sMySet, sMCISID, sSequenceNumber, sGSID;
-    char cRarity;
-    double dValue;
-    static QString sImagePath;
-    QString getImagePath() const;
-    QString getImageURL() const;
-    QString getLogoPath() const;
-    QString getLogoURL() const;
-    QString deckBoxInventoryLine(bool Foil) const;
-};
 
 class PCMWindow : public QMainWindow
 {
