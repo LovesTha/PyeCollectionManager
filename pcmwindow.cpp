@@ -474,10 +474,10 @@ void PCMWindow::on_pbOpenCollection_clicked()
     qmMyRegularPriceGuide.clear();
     qmMyFoilPriceGuide.clear();
 
-    StatusString("Attempting to load exported Deckbox Inventory");
-    LoadInventory(&qmMyRegularInventory, &qmMyFoilInventory, ui->collectionSourceLineEdit->text(), true); //inventory that has been exported from Deckbox
     StatusString("Attempting to load previous run inventory in Deckbox format");
     LoadInventory(&qmMyRegularInventory, &qmMyFoilInventory, ui->collectionOutputLineEdit->text(), true); //inventory from previous runs
+    StatusString("Attempting to load exported Deckbox Inventory");
+    LoadInventory(&qmMyRegularInventory, &qmMyFoilInventory, ui->collectionSourceLineEdit->text(), true); //inventory that has been exported from Deckbox
     StatusString("Attempting to load exported Deckbox price list input");
     LoadInventory(&qmMyRegularPriceGuide, &qmMyFoilPriceGuide, ui->deckBoxPriceInputLineEdit->text(), false);
 }
