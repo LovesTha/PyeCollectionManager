@@ -44,8 +44,8 @@ PCMWindow::PCMWindow(QWidget *parent) :
     ui->quantityToKeepSpinBox->setValue(Config.value("Quantity To Keep", "4").toInt());
 
     on_pbOpenDatabase_clicked();
-    on_pbOpenOutputs_clicked();
     on_pbOpenCollection_clicked();
+    on_pbOpenOutputs_clicked();
 }
 
 PCMWindow::~PCMWindow()
