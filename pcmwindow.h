@@ -20,8 +20,8 @@ class PCMWindow;
 class InventoryCard
 {
 public:
-    InventoryCard(int Quantity);
-    InventoryCard(QString sInitLine);
+    explicit InventoryCard(int Quantity);
+    explicit InventoryCard(QString sInitLine);
     static void InitOrder(QString sInitLine);
 
     int iMyCount, iMyTradelistCount, iMyCardNumber;

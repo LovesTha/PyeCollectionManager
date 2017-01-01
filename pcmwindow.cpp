@@ -510,7 +510,7 @@ void PCMWindow::LoadInventory(QMap<quint64, InventoryCard>* qmRegularInventory,
             }
             else
             {
-                qmRightInventory->insert(iMultiverseID, AddNotMax ? card.iMyCount : card.dMyMarketPrice);
+                qmRightInventory->insert(iMultiverseID, InventoryCard(AddNotMax ? card.iMyCount : card.dMyMarketPrice));
             }
         }
 
@@ -531,11 +531,12 @@ void PCMWindow::on_pbOpenDatabase_clicked()
     qmOracle.clear();
 
     OracleCard::sImagePath = ui->imageLocationLineEdit->text();
-    unsigned int iNoMID = 0, iNoMCID = 0, iNoSID = 0;
 
     QFile fInput(ui->cardDatabaseLocationLineEdit->text());
     if(fInput.open(QIODevice::ReadOnly | QIODevice::Text))
     {
+        unsigned int iNoMID = 0, iNoMCID = 0, iNoSID = 0;
+
         QJsonDocument jdoc = QJsonDocument::fromJson(fInput.readAll(), &jError);
 
         if(jError.error != QJsonParseError::NoError)
