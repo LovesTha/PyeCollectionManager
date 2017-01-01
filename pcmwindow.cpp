@@ -263,21 +263,24 @@ void PCMWindow::LoadInventory(QMap<quint64, InventoryCard>* qmRegularInventory,
             line = in.readLine();
             InventoryCard card(line);
             qmRightInventory = card.bMyFoil ? qmFoilInventory : qmRegularInventory;
-            quint64 iMultiverseID = qmMultiInverse.value(card.sMyName, 0);
-            if(iMultiverseID == 0)
+            QList<quint64> viMultiverseIDs = qmmMultiInverse.values(card.sMyName);
+            if(viMultiverseIDs.length() == 0)
                 continue; //we can't handle things that have no multiverse ID
-            if(qmRightInventory->contains(iMultiverseID))
+            for(auto&& iMultiverseID: viMultiverseIDs)
             {
-                if(AddNotMax)
-                    card.iMyCount = qmRightInventory->value(iMultiverseID, InventoryCard(0)).iMyCount + card.iMyCount;
-                else
-                    card.dMyMarketPrice = std::max(qmRightInventory->value(iMultiverseID, InventoryCard(0)).dMyMarketPrice, card.dMyMarketPrice);
+                if(qmRightInventory->contains(iMultiverseID))
+                {
+                    if(AddNotMax)
+                        card.iMyCount = qmRightInventory->value(iMultiverseID, InventoryCard(0)).iMyCount + card.iMyCount;
+                    else
+                        card.dMyMarketPrice = std::max(qmRightInventory->value(iMultiverseID, InventoryCard(0)).dMyMarketPrice, card.dMyMarketPrice);
 
-                qmRightInventory->insert(iMultiverseID, card);
-            }
-            else
-            {
-                qmRightInventory->insert(iMultiverseID, card);
+                    qmRightInventory->insert(iMultiverseID, card);
+                }
+                else
+                {
+                    qmRightInventory->insert(iMultiverseID, card);
+                }
             }
         }
 
@@ -294,7 +297,7 @@ void PCMWindow::LoadInventory(QMap<quint64, InventoryCard>* qmRegularInventory,
 void PCMWindow::on_pbOpenDatabase_clicked()
 {
     qmMultiverse.clear();
-    qmMultiInverse.clear();
+    qmmMultiInverse.clear();
     qmOracle.clear();
 
     OracleCard::sImagePath = ui->imageLocationLineEdit->text();
@@ -379,7 +382,7 @@ void PCMWindow::on_pbOpenDatabase_clicked()
                 card.sGSID = sGSID;
 
                 qmMultiverse.insert(iID, sName);
-                qmMultiInverse.insert(sName, iID);
+                qmmMultiInverse.insert(sName, iID); //note this is now a Multi Map, this insert will never replace
                 qmOracle.insert(iID, card);
             }
         }

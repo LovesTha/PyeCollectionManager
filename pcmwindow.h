@@ -20,10 +20,6 @@ namespace Ui {
 class PCMWindow;
 }
 
-
-
-
-
 class PCMWindow : public QMainWindow
 {
     Q_OBJECT
@@ -39,7 +35,7 @@ private:
     QMap<quint64, InventoryCard>        qmMyRegularInventory, qmMyFoilInventory;
     QMap<quint64, InventoryCard>        qmMyRegularPriceGuide, qmMyFoilPriceGuide;
     QMap<quint64, QString>    qmMultiverse;
-    QMap<QString, quint64>    qmMultiInverse;
+    QMultiMap<QString, quint64>    qmmMultiInverse;
     QMap<QString, QString>    qmTheSetCode;
     QMap<quint64, OracleCard> qmOracle;
 
