@@ -378,8 +378,6 @@ InventoryCard::InventoryCard(QString sInitLine) : InventoryCard(-1)
     if(!InitOrderEstablished)
         InitOrder(""); //will create the default order;
 
-    QString sTmp;
-
     if(pviTheFieldIndexes->at(0) > -1)
         iMyCount = elements.at(pviTheFieldIndexes->at(0)).toInt();
     else
