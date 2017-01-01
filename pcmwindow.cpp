@@ -42,6 +42,7 @@ PCMWindow::PCMWindow(QWidget *parent) :
     ui->tradeOutputLineEdit->setText(Config.value("Pucatrade Trades Output", "/mtg/trades.csv").toString());
     ui->tradeValueThresholdDoubleSpinBox->setValue(Config.value("Trade Minimum Value", "0.10").toDouble());
     ui->quantityToKeepSpinBox->setValue(Config.value("Quantity To Keep", "4").toInt());
+    ui->soundsLocationLineEdit->setText(Config.value("Sounds Location", "/mtg/sounds/").toString());
 
     on_pbOpenDatabase_clicked();
     on_pbOpenCollection_clicked();
@@ -61,6 +62,7 @@ PCMWindow::~PCMWindow()
     Config.setValue("Pucatrade Trades Output", ui->tradeOutputLineEdit->text());
     Config.setValue("Trade Minimum Value", ui->tradeValueThresholdDoubleSpinBox->value());
     Config.setValue("Quantity To Keep", ui->quantityToKeepSpinBox->value());
+    Config.setValue("Sounds Location", ui->soundsLocationLineEdit->text());
 
     fMyTradesOutput.flush();
     if(fMyTradesOutput.device())
@@ -151,7 +153,7 @@ void PCMWindow::TCPSocketReadReady()
                     //card not in inventory
                     ui->cardAction->setText("KEEP!");
                     StatusString(QString("Keep: %1").arg(invRegularCard.sMyName));
-                    mySound.setMedia(QUrl::fromLocalFile("/home/gareth/PyeCollectionManager/lock.wav"));
+                    mySound.setMedia(qKeep);
                     mySound.play();
                     if(isFoil)
                     {
@@ -171,7 +173,7 @@ void PCMWindow::TCPSocketReadReady()
                 {
                     ui->cardAction->setText("TRADE!");
                     StatusString(QString("Trade: %1 ($%2)").arg(invRegularCard.sMyName).arg((isFoil ? invFoilCard : invRegularCard).dMyMarketPrice));
-                    mySound.setMedia(QUrl::fromLocalFile("../PyeCollectionManager/coins.wav"));
+                    mySound.setMedia(qCoins);
                     mySound.play();
                     fMyTradesOutput << "1,\"" << card.sNameEn << "\",\"" << card.sMySet << "\",Near Mint,English,";
                     if(isFoil)
@@ -183,14 +185,14 @@ void PCMWindow::TCPSocketReadReady()
                 {
                     ui->cardAction->setText("No Price Data");
                     StatusString(QString("No Price Data for: %1!").arg(invRegularCard.sMyName), true);
-                    mySound.setMedia(QUrl::fromLocalFile("../PyeCollectionManager/weird.wav"));
+                    mySound.setMedia(qWeird);
                     mySound.play();
                 }
                 else
                 {
                     ui->cardAction->setText("trash");
                     StatusString(QString("Trash: %1").arg(invRegularCard.sMyName));
-                    mySound.setMedia(QUrl::fromLocalFile("../PyeCollectionManager/trashcan.wav"));
+                    mySound.setMedia(qTrash);
                     mySound.play();
                 }
             }
@@ -796,4 +798,21 @@ void PCMWindow::StatusString(QString sMessage, bool bError)
 
     if(bError)
         ui->statusBar->showMessage(sMessage);
+}
+
+void PCMWindow::on_soundsLocationLineEdit_textChanged(const QString &arg1)
+{
+    int index = arg1.lastIndexOf('/');
+    int length = arg1.length();
+    if(arg1.lastIndexOf('/') == arg1.length() - 1)
+    {
+        qTrash = QUrl::fromLocalFile(arg1 + "trashcan.wav");
+        qKeep = QUrl::fromLocalFile(arg1 + "lock.wav");
+        qCoins = QUrl::fromLocalFile(arg1 + "coins.wav");
+        qWeird = QUrl::fromLocalFile(arg1 + "weird.wav");
+    }
+    else
+    {
+        //ui->
+    }
 }

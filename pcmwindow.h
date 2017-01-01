@@ -11,6 +11,7 @@
 #include <QFile>
 #include <QNetworkAccessManager>
 #include <QMediaPlayer>
+#include <QUrl>
 
 
 namespace Ui {
@@ -87,6 +88,9 @@ private:
 
     void StatusString(QString sMessage, bool bError = false);
 
+    //my sounds
+    QUrl qTrash, qCoins, qKeep, qWeird;
+
 private slots:
     void NewTCPConnection();
     void TCPSocketReadReady();
@@ -96,6 +100,7 @@ private slots:
     void on_pbOpenOutputs_clicked();
     void ImageFetchFinished(QNetworkReply* reply);
     void on_pbFullCardListDB_clicked();
+    void on_soundsLocationLineEdit_textChanged(const QString &arg1);
 };
 
 #endif // PCMWINDOW_H
