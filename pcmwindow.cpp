@@ -272,7 +272,6 @@ bool quint64GreaterThan(const quint64 &v1, const quint64 &v2)
 {
     return v1 > v2;
 }
-
 void PCMWindow::HandleMultipleCards(OracleCard card, QList<quint64> lCardIDs)
 {
     ui->cardAction->setText("Multiple Versions");
@@ -303,18 +302,20 @@ void PCMWindow::HandleMultipleCards(OracleCard card, QList<quint64> lCardIDs)
     }
 
     //As we haven't been able to trash the card, now we must determine what set it is from
-    QVBoxLayout *MySetSelectorLayout = new QVBoxLayout();
+    QGridLayout *MySetSelectorLayout = new QGridLayout();
 
     //we want the list to sort most recent set first, greatest multiverseID first is a close aproximation of that
     qSort(lCardIDs.begin(), lCardIDs.end(), quint64GreaterThan);
 
+    int count = 0;
     for(auto&& CardID: lCardIDs)
     {
         OracleCard priceCard = qmOracle.value(CardID);
 
         SetChoice *thisChoice = new SetChoice(priceCard, MySetSelectorLayout->widget());
         thisChoice->setParent(MySetSelectorLayout->widget());
-        MySetSelectorLayout->addWidget((QWidget*)thisChoice);
+        MySetSelectorLayout->addWidget((QWidget*)thisChoice, count % 10, count / 10);
+        count++;
         connect(thisChoice, SIGNAL(clicked(bool)), this, SLOT(setSelected()));
     }
 
