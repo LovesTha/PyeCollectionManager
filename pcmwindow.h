@@ -12,41 +12,13 @@
 #include <QNetworkAccessManager>
 #include <QMediaPlayer>
 #include <QUrl>
+#include "inventorycard.h"
+#include "oraclecard.h"
 
 
 namespace Ui {
 class PCMWindow;
 }
-
-class InventoryCard
-{
-public:
-    explicit InventoryCard(int Quantity);
-    explicit InventoryCard(QString sInitLine);
-    static void InitOrder(QString sInitLine);
-
-    int iMyCount, iMyTradelistCount, iMyCardNumber;
-    QString sMyName, sMyEdition, sMyCondition, sMyLanguage, sMyRarity;
-    bool bMyFoil, bMySigned, bMyArtistProof, bMyAlteredArt, bMyMisprint, bMyPromo, bMyTextless;
-    double dMySalePrice, dMyMarketPrice;
-    static QMap<QString, unsigned int> qmTheStringIndex;
-
-private:
-    static bool InitOrderEstablished;
-    static QVector<int> *pviTheFieldIndexes;
-};
-
-class OracleCard
-{
-public:
-    quint64 iMultiverseID;
-    QString sNameEn, sMySet, sID, sSequenceNumber;
-    double dValue;
-    static QString sImagePath;
-    QString getImagePath() const;
-    QString getImageURL() const;
-    QString deckBoxInventoryLine(bool Foil) const;
-};
 
 class PCMWindow : public QMainWindow
 {
@@ -60,10 +32,10 @@ private:
     Ui::PCMWindow *ui;
     QTcpServer *pMyTCPServer;
 
-    QMap<quint64, InventoryCard>        qmMyRegularInventory, qmMyFoilInventory;
+    QMap<quint64, InventoryCard>        qmMyRegularCollectorInventory, qmMyFoilCollectorInventory;
+    QMap<QString, InventoryCard>        qmMyRegularPlayerInventory, qmMyFoilPlayerInventory;
     QMap<quint64, InventoryCard>        qmMyRegularPriceGuide, qmMyFoilPriceGuide;
-    QMap<quint64, QString>    qmMultiverse;
-    QMap<QString, quint64>    qmMultiInverse;
+    QMultiMap<QString, quint64>    qmmMultiInverse;
     QMap<QString, QString>    qmTheSetCode;
     QMap<quint64, OracleCard> qmOracle;
 
@@ -91,9 +63,17 @@ private:
     //my sounds
     QUrl qTrash, qCoins, qKeep, qWeird;
 
+    void HandleSingleCard(OracleCard card);
+    void HandleMultipleCards(OracleCard card, QList<quint64> lCardIDs);
+    void trash(InventoryCard card);
+
+    bool isFoil();
+    bool Needed(OracleCard card, int *iRegCount = 0, int *iFoilCnt = 0);
+    void CleanSetSelection();
+
 private slots:
     void NewTCPConnection();
-    void TCPSocketReadReady();
+    void ScryGlassRequestReceived();
     void TCPDisconnected();
     void on_pbOpenCollection_clicked();
     void on_pbOpenDatabase_clicked();
@@ -101,6 +81,7 @@ private slots:
     void ImageFetchFinished(QNetworkReply* reply);
     void on_pbFullCardListDB_clicked();
     void on_soundsLocationLineEdit_textChanged(const QString &arg1);
+    void setSelected();
 };
 
 #endif // PCMWINDOW_H

@@ -9,6 +9,7 @@
 #include <QtNetwork>
 #include <map>
 #include <QSettings>
+#include "setchoice.h"
 
 PCMWindow::PCMWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -43,6 +44,7 @@ PCMWindow::PCMWindow(QWidget *parent) :
     ui->tradeValueThresholdDoubleSpinBox->setValue(Config.value("Trade Minimum Value", "0.10").toDouble());
     ui->quantityToKeepSpinBox->setValue(Config.value("Quantity To Keep", "4").toInt());
     ui->soundsLocationLineEdit->setText(Config.value("Sounds Location", "/mtg/sounds/").toString());
+    ui->IsAPlayerCheckBox->setChecked(Config.value("Treat All Printings As a Single Card", "true").toBool());
 
     on_pbOpenDatabase_clicked();
     on_pbOpenCollection_clicked();
@@ -63,6 +65,7 @@ PCMWindow::~PCMWindow()
     Config.setValue("Trade Minimum Value", ui->tradeValueThresholdDoubleSpinBox->value());
     Config.setValue("Quantity To Keep", ui->quantityToKeepSpinBox->value());
     Config.setValue("Sounds Location", ui->soundsLocationLineEdit->text());
+    Config.value("Treat All Printings As a Single Card", ui->IsAPlayerCheckBox->isChecked());
 
     fMyTradesOutput.flush();
     if(fMyTradesOutput.device())
@@ -88,7 +91,7 @@ void PCMWindow::NewTCPConnection()
     while(pMyTCPServer->hasPendingConnections())
     {
         QTcpSocket * socket = pMyTCPServer->nextPendingConnection();
-        connect(socket, SIGNAL(readyRead()), SLOT(TCPSocketReadReady()));
+        connect(socket, SIGNAL(readyRead()), SLOT(ScryGlassRequestReceived()));
         connect(socket, SIGNAL(disconnected()), SLOT(TCPDisconnected()));
         StatusString(QString("New TCP Connection (%1)").arg(socket->peerAddress().toString()));
     }
@@ -101,8 +104,11 @@ void PCMWindow::TCPDisconnected()
     socket->deleteLater();
 }
 
-void PCMWindow::TCPSocketReadReady()
+void PCMWindow::ScryGlassRequestReceived()
 {
+    if(ui->hlCardImageNSetChoice->count() > 1)
+        ((SetChoice*)ui->hlCardImageNSetChoice->itemAt(1)->layout()->itemAt(0)->widget())->click();
+
     QTcpSocket *socket = static_cast<QTcpSocket*>(sender());
     QByteArray buffer;
     while (socket->bytesAvailable() > 0)
@@ -141,101 +147,203 @@ void PCMWindow::TCPSocketReadReady()
                     sMyImageRequested = sImagePath;
                 }
 
-                InventoryCard invRegularCard = qmMyRegularInventory.value(multiverseID, InventoryCard(0));
-                InventoryCard invFoilCard    = qmMyFoilInventory   .value(multiverseID, InventoryCard(0));
-                InventoryCard priceCard = qmMyRegularPriceGuide.value(multiverseID, InventoryCard(-1));
-                bool isFoil = ui->cbScanningFoils->isChecked();
-                ui->lcdCollectionQuantity->display((isFoil ? invFoilCard : invRegularCard).iMyCount);
-
-                if((invFoilCard.iMyCount + invRegularCard.iMyCount < ui->quantityToKeepSpinBox->value()) //we don't have enough of any variant
-                  ||(isFoil && invFoilCard.iMyCount < ui->quantityToKeepSpinBox->value())) //this is a foil, and we don't have enough foils
-                {
-                    //card not in inventory
-                    ui->cardAction->setText("KEEP!");
-                    StatusString(QString("Keep: %1").arg(invRegularCard.sMyName));
-                    mySound.setMedia(qKeep);
-                    mySound.play();
-                    if(isFoil)
-                    {
-                        invFoilCard.iMyCount++;
-                        qmMyFoilInventory.insert(multiverseID, invFoilCard);
-                    }
-                    else
-                    {
-                        invRegularCard.iMyCount++;
-                        qmMyRegularInventory.insert(multiverseID, invRegularCard);
-                    }
-
-                    fMyCollectionOutput << card.deckBoxInventoryLine(isFoil);
-                    fMyCollectionOutput.flush();
-                }
-                else if((priceCard.dMyMarketPrice > ui->tradeValueThresholdDoubleSpinBox->value()) | isFoil)
-                {
-                    ui->cardAction->setText("TRADE!");
-                    StatusString(QString("Trade: %1 ($%2)").arg(invRegularCard.sMyName).arg((isFoil ? invFoilCard : invRegularCard).dMyMarketPrice));
-                    mySound.setMedia(qCoins);
-                    mySound.play();
-                    fMyTradesOutput << "1,\"" << card.sNameEn << "\",\"" << card.sMySet << "\",Near Mint,English,";
-                    if(isFoil)
-                        fMyTradesOutput << "Foil";
-                    fMyTradesOutput << "\n";
-                    fMyTradesOutput.flush();
-                }
-                else if(priceCard.dMyMarketPrice < 0.001)
-                {
-                    ui->cardAction->setText("No Price Data");
-                    StatusString(QString("No Price Data for: %1!").arg(invRegularCard.sMyName), true);
-                    mySound.setMedia(qWeird);
-                    mySound.play();
-                }
+                //having started attempting to display the image, lets try and figure out if this card has multiple printings
+                QList<quint64> lPrintingIDs = qmmMultiInverse.values(card.sNameEn);
+                if(lPrintingIDs.length() == 1)
+                    return HandleSingleCard(card);
                 else
-                {
-                    ui->cardAction->setText("trash");
-                    StatusString(QString("Trash: %1").arg(invRegularCard.sMyName));
-                    mySound.setMedia(qTrash);
-                    mySound.play();
-                }
+                    return HandleMultipleCards(card, lPrintingIDs);
             }
             else
             {
-                ui->imageLabel->setText("Invalid request");                
+                ui->imageLabel->setText("Invalid request");
                 StatusString("Unrecognised request", true);
             }
         }
     }
 }
 
-QString OracleCard::deckBoxInventoryLine(bool Foil) const
+bool PCMWindow::Needed(OracleCard card, int *iRegCount, int *iFoilCnt)
 {
-    QString sInventory("1,0,%1,%2,%3,Near Mint,English,%4,,,,,,,,\n");
-    QString sName = sNameEn;
-    if(sName.at(0) != '\"') //only if it doesn't start with a " already
-        sName = sName.replace(QRegExp("\""), "\"\""); //some names include " in them, deckbox wants those replaced with a pair of ""
-    //sName = sName.replace(QRegExp("[\?\!]"), "");
-    if(sName == "Kill! Destroy!")
-        sName = "Kill Destroy"; //deckbox stripped the ! from this name, but not others
-    if(sName.at(0) != '\"') //only if it doesn't start with a " already
-        sName = QString("\"") + sName + "\"";
+    int iRegularCount = 0;
+    int iFoilCount = 0;
 
-    QString sSetLocal = this->sMySet;
-    if(sSetLocal == QString("Planechase 2012 Edition"))
-        sSetLocal = "Planechase 2012";
-    if(sSetLocal == QString("Magic: The Gathering-Commander"))
-        sSetLocal = "Commander";
-    if(sSetLocal == QString("Commander 2013 Edition"))
-        sSetLocal = "Commander 2013";
-    if(sSetLocal == QString("Magic: The Gathering—Conspiracy"))
-        sSetLocal = "Conspiracy";
-    if(sSetLocal == QString("Modern Masters Edition"))
-        sSetLocal = "Modern Masters";
-    sSetLocal == sSetLocal.replace(QRegExp(" \\([0-9][0-9][0-9][0-9]\\)"), "");
-    if(sSetLocal.at(0) != '\"') //only if it doesn't start with a " already
-        sSetLocal = sSetLocal.replace(QRegExp("\""), "\"\""); //some names include " in them, deckbox wants those replaced with a pair of ""
-    sSetLocal = QString("\"") + sSetLocal + "\"";
+    InventoryCard invRegularCard = qmMyRegularCollectorInventory.value(card.iMultiverseID, InventoryCard(0));
+    InventoryCard invFoilCard    = qmMyFoilCollectorInventory   .value(card.iMultiverseID, InventoryCard(0));
 
-    sInventory = sInventory.arg(sName).arg(sSetLocal).arg(this->sSequenceNumber).arg(Foil ? "Foil" : ""); //arg 4 is Foil or blank
-    return sInventory;
+    if(ui->IsAPlayerCheckBox)
+    {
+        //players don't care about printings, just about owning the card
+        QList<quint64> lPrintingIDs = qmmMultiInverse.values(card.sNameEn);
+        for(auto&& CardID: lPrintingIDs)
+        {
+            InventoryCard tmpRegularCard = qmMyRegularCollectorInventory.value(CardID, InventoryCard(0));
+            InventoryCard tmpFoilCard    = qmMyFoilCollectorInventory   .value(CardID, InventoryCard(0));
+
+            iRegularCount += tmpRegularCard.iMyCount;
+            iFoilCount += tmpFoilCard.iMyCount;
+        }
+    }
+    else
+    {
+        //collectors care about each individual printing seperately
+        iRegularCount += invRegularCard.iMyCount;
+        iFoilCount += invFoilCard.iMyCount;
+    }
+
+    if(iRegCount) *iRegCount = iRegularCount;
+    if(iFoilCnt)   *iFoilCnt = iFoilCount;
+
+    ui->lcdCollectionQuantity->display(isFoil() ? iFoilCount : iRegularCount);
+
+    return (iFoilCount + iRegularCount < ui->quantityToKeepSpinBox->value()) //we don't have enough of any variant
+            ||(isFoil() && iFoilCount < ui->quantityToKeepSpinBox->value()); //this is a foil, and we don't have enough foils
 }
+
+void PCMWindow::HandleSingleCard(OracleCard card)
+{
+    quint64 multiverseID = card.iMultiverseID;
+
+    InventoryCard invRegularCard = qmMyRegularCollectorInventory.value(multiverseID, InventoryCard(0));
+    InventoryCard invFoilCard    = qmMyFoilCollectorInventory   .value(multiverseID, InventoryCard(0));
+
+    int iRegularCount = 0;
+    int iFoilCount = 0;
+
+    InventoryCard priceCard = qmMyRegularPriceGuide.value(multiverseID, InventoryCard(0));
+
+    if(Needed(card, &iRegularCount, &iFoilCount))
+    {
+        //insufficient cards not in inventory
+        ui->cardAction->setText("KEEP!");
+        StatusString(QString("Keep: %1").arg(invRegularCard.sMyName));
+        mySound.setMedia(qKeep);
+        mySound.play();
+        if(isFoil())
+        {
+            invFoilCard.iMyCount++;
+            qmMyFoilCollectorInventory.insert(multiverseID, invFoilCard);
+        }
+        else
+        {
+            invRegularCard.iMyCount++;
+            qmMyRegularCollectorInventory.insert(multiverseID, invRegularCard);
+        }
+
+        fMyCollectionOutput << card.deckBoxInventoryLine(isFoil());
+        fMyCollectionOutput.flush();
+        return;
+    }
+    else if((priceCard.dMyMarketPrice > ui->tradeValueThresholdDoubleSpinBox->value()) | isFoil())
+    {
+        ui->cardAction->setText("Trade");
+        StatusString(QString("Trade: %1 ($%2)").arg(invRegularCard.sMyName).arg((isFoil() ? invFoilCard : invRegularCard).dMyMarketPrice));
+        mySound.setMedia(qCoins);
+        mySound.play();
+        fMyTradesOutput << "1,\"" << card.sNameEn << "\",\"" << card.sMySet << "\",Near Mint,English,";
+        if(isFoil())
+            fMyTradesOutput << "Foil";
+        fMyTradesOutput << "\n";
+        fMyTradesOutput.flush();
+    }
+    else if(priceCard.dMyMarketPrice < 0.001)
+    {
+        ui->cardAction->setText("No Price Data");
+        StatusString(QString("No Price Data for: %1!").arg(invRegularCard.sMyName), true);
+        mySound.setMedia(qWeird);
+        mySound.play();
+    }
+    else
+    {
+        trash(invRegularCard);
+    }
+}
+
+void PCMWindow::trash(InventoryCard card)
+{
+    ui->cardAction->setText("Trash");
+    StatusString(QString("Trash: %1").arg(card.sMyName));
+    mySound.setMedia(qTrash);
+    mySound.play();
+}
+
+// Compare two Multiverse IDs.
+bool quint64GreaterThan(const quint64 &v1, const quint64 &v2)
+{
+    return v1 > v2;
+}
+
+void PCMWindow::HandleMultipleCards(OracleCard card, QList<quint64> lCardIDs)
+{
+    ui->cardAction->setText("Multiple Versions");
+    ui->lcdCollectionQuantity->display(-1);
+    //first we figure out if the price range falls within acceptable bounds for trashing (which we never do to foils and cards we want)
+    if(!isFoil() && !Needed(card))
+    {
+        bool trashable = true;
+        InventoryCard priceCard(-1);
+        for(auto&& CardID: lCardIDs)
+        {
+            priceCard = qmMyRegularPriceGuide.value(CardID, InventoryCard(0));
+
+            if(priceCard.dMyMarketPrice < 0.001)
+            {
+                trashable = false;
+                break; // we have no price data for this version, so we can't confidently trash it ever
+            }
+            if(priceCard.dMyMarketPrice > ui->tradeValueThresholdDoubleSpinBox->value())
+            {
+                trashable = false;
+                break; // we have a valuable variant, so we can't confidently trash it ever
+            }
+        }
+
+        if(trashable)
+            return trash(priceCard);
+    }
+
+    //As we haven't been able to trash the card, now we must determine what set it is from
+    QVBoxLayout *MySetSelectorLayout = new QVBoxLayout();
+
+    //we want the list to sort most recent set first, greatest multiverseID first is a close aproximation of that
+    qSort(lCardIDs.begin(), lCardIDs.end(), quint64GreaterThan);
+
+    for(auto&& CardID: lCardIDs)
+    {
+        OracleCard priceCard = qmOracle.value(CardID);
+
+        SetChoice *thisChoice = new SetChoice(priceCard, MySetSelectorLayout->widget());
+        thisChoice->setParent(MySetSelectorLayout->widget());
+        MySetSelectorLayout->addWidget((QWidget*)thisChoice);
+        connect(thisChoice, SIGNAL(clicked(bool)), this, SLOT(setSelected()));
+    }
+
+    ui->hlCardImageNSetChoice->addLayout(MySetSelectorLayout->layout());
+}
+
+void PCMWindow::setSelected()
+{
+    SetChoice *set = (SetChoice*)this->sender();
+    OracleCard card = set->MyCard;
+    HandleSingleCard(card);
+
+    CleanSetSelection();
+}
+
+void PCMWindow::CleanSetSelection()
+{
+
+    //set has been selected, clean up and remove the option to select a set
+    QLayoutItem *item;
+    //while ((item = ((QLayout*)set->parent())->takeAt(0)) != 0)
+    while ((item = ui->hlCardImageNSetChoice->itemAt(1)->layout()->takeAt(0)) != 0)
+    {
+        item->widget()->deleteLater();
+    }
+    item = ui->hlCardImageNSetChoice->takeAt(1);
+    item->layout()->deleteLater();
+}
+
 
 void PCMWindow::DisplayImage(QString sImagePath)
 {
@@ -263,221 +371,17 @@ void PCMWindow::ImageFetchFinished(QNetworkReply* reply)
    DisplayImage(sMyImageRequested);
 }
 
-QVector<int> *InventoryCard::pviTheFieldIndexes = 0;
-bool InventoryCard::InitOrderEstablished = false;
-QMap<QString, unsigned int> InventoryCard::qmTheStringIndex;
-QString OracleCard::sImagePath = "/tmp/";
-
-void InventoryCard::InitOrder(QString sInitLine)
-{
-    if(pviTheFieldIndexes == 0) pviTheFieldIndexes = new QVector<int>;
-    for(int i = 0; i < 17; ++i) pviTheFieldIndexes->append(-1);
-
-    QStringList elements = sInitLine.split(",");
-    for(unsigned int iIndex = 0; !elements.isEmpty(); ++iIndex)
-    {
-        QString item = elements.takeFirst();
-        if(item.compare("Count",Qt::CaseInsensitive) == 0)
-        {
-            pviTheFieldIndexes->replace(0, iIndex);
-        }
-        else if(item.compare("Tradelist Count",Qt::CaseInsensitive) == 0)
-        {
-            pviTheFieldIndexes->replace(1, iIndex);
-        }
-        else if(item.compare("Name",Qt::CaseInsensitive) == 0)
-        {
-            pviTheFieldIndexes->replace(2, iIndex);
-        }
-        else if(item.compare("Edition",Qt::CaseInsensitive) == 0)
-        {
-            pviTheFieldIndexes->replace(3, iIndex);
-        }
-        else if(item.compare("Card Number",Qt::CaseInsensitive) == 0)
-        {
-            pviTheFieldIndexes->replace(4, iIndex);
-        }
-        else if(item.compare("Condition",Qt::CaseInsensitive) == 0)
-        {
-            pviTheFieldIndexes->replace(5, iIndex);
-        }
-        else if(item.compare("Language",Qt::CaseInsensitive) == 0)
-        {
-            pviTheFieldIndexes->replace(6, iIndex);
-        }
-        else if(item.compare("Foil",Qt::CaseInsensitive) == 0)
-        {
-            pviTheFieldIndexes->replace(7, iIndex);
-        }
-        else if(item.compare("Signed",Qt::CaseInsensitive) == 0)
-        {
-            pviTheFieldIndexes->replace(8, iIndex);
-        }
-        else if(item.compare("Artist Proof",Qt::CaseInsensitive) == 0)
-        {
-            pviTheFieldIndexes->replace(9, iIndex);
-        }
-        else if(item.compare("Altered Art",Qt::CaseInsensitive) == 0)
-        {
-            pviTheFieldIndexes->replace(10, iIndex);
-        }
-        else if(item.compare("Misprint",Qt::CaseInsensitive) == 0)
-        {
-            pviTheFieldIndexes->replace(11, iIndex);
-        }
-        else if(item.compare("Promo",Qt::CaseInsensitive) == 0)
-        {
-            pviTheFieldIndexes->replace(12, iIndex);
-        }
-        else if(item.compare("Textless",Qt::CaseInsensitive) == 0)
-        {
-            pviTheFieldIndexes->replace(13, iIndex);
-        }
-        else if(item.compare("My Price",Qt::CaseInsensitive) == 0)
-        {
-            pviTheFieldIndexes->replace(14, iIndex);
-        }
-        else if(item.compare("Rarity",Qt::CaseInsensitive) == 0)
-        {
-            pviTheFieldIndexes->replace(15, iIndex);
-        }
-        else if(item.compare("Price",Qt::CaseInsensitive) == 0)
-        {
-            pviTheFieldIndexes->replace(16, iIndex);
-        }
-    }
-
-    InitOrderEstablished = true;
-}
-
-InventoryCard::InventoryCard(int Quantity)
-{
-    iMyCount = Quantity;
-    iMyTradelistCount = Quantity;
-    iMyCardNumber = -1;
-    sMyName = "";
-    sMyEdition = "";
-    sMyCondition = "";
-    sMyLanguage = "";
-    sMyRarity = "";
-    bMyFoil = false;
-    bMySigned = false;
-    bMyArtistProof = false;
-    bMyAlteredArt = false;
-    bMyMisprint = false;
-    bMyPromo = false;
-    bMyTextless = false;
-    dMySalePrice = -1;
-    dMyMarketPrice = -1;
-}
-
-InventoryCard::InventoryCard(QString sInitLine) : InventoryCard(-1)
-{
-    QStringList elements = sInitLine.split(",");
-    if(elements.size() < 17)
-        return;
-
-    if(!InitOrderEstablished)
-        InitOrder(""); //will create the default order;
-
-    if(pviTheFieldIndexes->at(0) > -1)
-        iMyCount = elements.at(pviTheFieldIndexes->at(0)).toInt();
-    else
-        iMyCount = 0;
-
-    if(pviTheFieldIndexes->at(1) > -1)
-        iMyTradelistCount = elements.at(pviTheFieldIndexes->at(1)).toInt();
-    else
-        iMyTradelistCount = 0;
-
-    if(pviTheFieldIndexes->at(4) > -1)
-        iMyCardNumber = elements.at(pviTheFieldIndexes->at(4)).toInt();
-    else
-        iMyCardNumber = 0;
-
-    if(pviTheFieldIndexes->at(16) > -1)
-    {
-        QString sTmp = elements.at(pviTheFieldIndexes->at(16));
-        dMyMarketPrice =  sTmp.replace(QRegExp("\\$"),"").toFloat();
-    }
-    else
-        dMyMarketPrice = 0;
-
-    if(pviTheFieldIndexes->at(14) > -1)
-        dMySalePrice = elements.at(pviTheFieldIndexes->at(14)).toFloat();
-    else
-        dMySalePrice = 0;
-
-    if(pviTheFieldIndexes->at(2) > -1)
-        sMyName      = elements.at(pviTheFieldIndexes->at(2));
-    else
-        dMyMarketPrice = 0;
-
-    if(pviTheFieldIndexes->at(3) > -1)
-        sMyEdition   = elements.at(pviTheFieldIndexes->at(3));
-    else
-        sMyEdition = "Unknown";
-    if(pviTheFieldIndexes->at(5) > -1)
-        sMyCondition = elements.at(pviTheFieldIndexes->at(5));
-    else
-        sMyCondition = "Near Mint";
-    if(pviTheFieldIndexes->at(6) > -1)
-        sMyLanguage  = elements.at(pviTheFieldIndexes->at(6));
-    else
-        sMyLanguage = "English";
-
-    if(pviTheFieldIndexes->at(15) > -1)
-        sMyRarity    = elements.at(pviTheFieldIndexes->at(15));
-    else
-        sMyRarity = "Special";
-
-    if(pviTheFieldIndexes->at(7) > -1)
-        bMyFoil        = !elements.at(pviTheFieldIndexes->at(7)).isEmpty();
-    else
-        bMyFoil = false;
-
-    if(pviTheFieldIndexes->at(8) > -1)
-        bMySigned      = !elements.at(pviTheFieldIndexes->at(8)).isEmpty();
-    else
-        bMySigned = false;
-    if(pviTheFieldIndexes->at(9) > -1)
-        bMyArtistProof = !elements.at(pviTheFieldIndexes->at(9)).isEmpty();
-    else
-        bMyArtistProof = false;
-
-    if(pviTheFieldIndexes->at(10) > -1)
-        bMyAlteredArt  = !elements.at(pviTheFieldIndexes->at(10)).isEmpty();
-    else
-        bMyAlteredArt = false;
-
-    if(pviTheFieldIndexes->at(11) > -1)
-        bMyMisprint    = !elements.at(pviTheFieldIndexes->at(11)).isEmpty();
-    else
-        bMyMisprint = false;
-
-    if(pviTheFieldIndexes->at(12) > -1)
-        bMyPromo       = !elements.at(pviTheFieldIndexes->at(12)).isEmpty();
-    else
-        bMyPromo = false;
-
-    if(pviTheFieldIndexes->at(13) > -1)
-        bMyTextless    = !elements.at(pviTheFieldIndexes->at(13)).isEmpty();
-    else
-        bMyTextless = false;
-
-}
-
 void PCMWindow::on_pbOpenCollection_clicked()
 {
-    qmMyRegularInventory.clear();
-    qmMyFoilInventory.clear();
+    qmMyRegularCollectorInventory.clear();
+    qmMyFoilCollectorInventory.clear();
     qmMyRegularPriceGuide.clear();
     qmMyFoilPriceGuide.clear();
 
     StatusString("Attempting to load previous run inventory in Deckbox format");
-    LoadInventory(&qmMyRegularInventory, &qmMyFoilInventory, ui->collectionOutputLineEdit->text(), true); //inventory from previous runs
+    LoadInventory(&qmMyRegularCollectorInventory, &qmMyFoilCollectorInventory, ui->collectionOutputLineEdit->text(), true); //inventory from previous runs
     StatusString("Attempting to load exported Deckbox Inventory");
-    LoadInventory(&qmMyRegularInventory, &qmMyFoilInventory, ui->collectionSourceLineEdit->text(), true); //inventory that has been exported from Deckbox
+    LoadInventory(&qmMyRegularCollectorInventory, &qmMyFoilCollectorInventory, ui->collectionSourceLineEdit->text(), true); //inventory that has been exported from Deckbox
     StatusString("Attempting to load exported Deckbox price list input");
     LoadInventory(&qmMyRegularPriceGuide, &qmMyFoilPriceGuide, ui->deckBoxPriceInputLineEdit->text(), false);
 }
@@ -499,21 +403,24 @@ void PCMWindow::LoadInventory(QMap<quint64, InventoryCard>* qmRegularInventory,
             line = in.readLine();
             InventoryCard card(line);
             qmRightInventory = card.bMyFoil ? qmFoilInventory : qmRegularInventory;
-            quint64 iMultiverseID = qmMultiInverse.value(card.sMyName, 0);
-            if(iMultiverseID == 0)
+            QList<quint64> viMultiverseIDs = qmmMultiInverse.values(card.sMyName);
+            if(viMultiverseIDs.length() == 0)
                 continue; //we can't handle things that have no multiverse ID
-            if(qmRightInventory->contains(iMultiverseID))
+            for(auto&& iMultiverseID: viMultiverseIDs)
             {
-                if(AddNotMax)
-                    card.iMyCount = qmRightInventory->value(iMultiverseID, InventoryCard(0)).iMyCount + card.iMyCount;
-                else
-                    card.dMyMarketPrice = std::max(qmRightInventory->value(iMultiverseID, InventoryCard(0)).dMyMarketPrice, card.dMyMarketPrice);
+                if(qmRightInventory->contains(iMultiverseID))
+                {
+                    if(AddNotMax)
+                        card.iMyCount = qmRightInventory->value(iMultiverseID, InventoryCard(0)).iMyCount + card.iMyCount;
+                    else
+                        card.dMyMarketPrice = std::max(qmRightInventory->value(iMultiverseID, InventoryCard(0)).dMyMarketPrice, card.dMyMarketPrice);
 
-                qmRightInventory->insert(iMultiverseID, card);
-            }
-            else
-            {
-                qmRightInventory->insert(iMultiverseID, card);
+                    qmRightInventory->insert(iMultiverseID, card);
+                }
+                else
+                {
+                    qmRightInventory->insert(iMultiverseID, card);
+                }
             }
         }
 
@@ -529,8 +436,7 @@ void PCMWindow::LoadInventory(QMap<quint64, InventoryCard>* qmRegularInventory,
 
 void PCMWindow::on_pbOpenDatabase_clicked()
 {
-    qmMultiverse.clear();
-    qmMultiInverse.clear();
+    qmmMultiInverse.clear();
     qmOracle.clear();
 
     OracleCard::sImagePath = ui->imageLocationLineEdit->text();
@@ -552,7 +458,7 @@ void PCMWindow::on_pbOpenDatabase_clicked()
             QJsonObject jSet = set.toObject();
             QJsonArray jCards = jSet["cards"].toArray();
 
-            QString sMCISID;
+            QString sMCISID, sGSID;
             if(jSet["magicCardsInfoCode"].isNull())
             {
                 iNoSID++;
@@ -562,6 +468,11 @@ void PCMWindow::on_pbOpenDatabase_clicked()
             {
                 sMCISID = jSet["magicCardsInfoCode"].toString();
             }
+
+            if(jSet["gathererCode"].isNull())
+                sGSID = jSet["code"].toString();
+            else
+                sGSID = jSet["gathererCode"].toString();
 
             for(auto&& cardIter: jCards)
             {
@@ -604,11 +515,12 @@ void PCMWindow::on_pbOpenDatabase_clicked()
                 //if(card.sNameEn.contains("Kenzo"))
                     //int iasf = 999;
 
+                card.cRarity = jCard["rarity"].toString().at(0).toLatin1();
                 card.sMySet = jSet["name"].toString();
-                card.sID  = sMCISID;
+                card.sMCISID = sMCISID;
+                card.sGSID = sGSID;
 
-                qmMultiverse.insert(iID, sName);
-                qmMultiInverse.insert(sName, iID);
+                qmmMultiInverse.insert(sName, iID); //note this is now a Multi Map, this insert will never replace
                 qmOracle.insert(iID, card);
             }
         }
@@ -656,84 +568,6 @@ void PCMWindow::on_pbFullCardListDB_clicked()
     fFullCardListOutput.device()->deleteLater();
 }
 
-/*void PCMWindow::ReadOracle()
-{
-    while(reader.readNextStartElement())
-    {
-        if(reader.name() == "sets") ReadSets();
-        else if(reader.name() == "cards") ReadCards();
-        else reader.skipCurrentElement();
-    }
-}
-
-void PCMWindow::ReadSets()
-{
-    while(reader.readNextStartElement())
-    {
-        if(reader.name() == "set") ReadSet();
-        else reader.skipCurrentElement();
-    }
-}
-
-void PCMWindow::ReadSet()
-{
-    QString sName, sCode;
-    while(reader.readNextStartElement())
-    {
-        if(reader.name() == "name")
-            sName = reader.readElementText();
-        else if(reader.name() == "code")
-            sCode = reader.readElementText();
-        else reader.skipCurrentElement();
-    }
-
-    qmTheSetCode.insert(sCode, sName);
-}
-
-void PCMWindow::ReadCards()
-{
-    while(reader.readNextStartElement())
-    {
-        QString sTmp = reader.name().toString();
-        if(reader.name() == "card") ReadCard();
-        else reader.skipCurrentElement();
-    }
-}
-
-void PCMWindow::ReadCard()
-{
-    QString sName, sSet, sNameDe;
-    quint64 iID, iNumber;
-    double dValue = -1;
-    while(reader.readNextStartElement())
-    {
-        QString stmp = reader.name().toString();
-        if(reader.name() == "id")
-            iID     = reader.readElementText().toInt();
-        else if(reader.name() == "set")
-            sSet    = reader.readElementText();
-        else if(reader.name() == "name")
-            sName   = reader.readElementText();
-        else if(reader.name() == "number")
-            iNumber = reader.readElementText().toInt();
-        else if(reader.name() == "name_DE")
-            sNameDe = reader.readElementText();
-        else if(reader.name() == "pricing_mid")
-            dValue  = reader.readElementText().toDouble();
-        else reader.skipCurrentElement();
-    }
-
-    OracleCard card;
-    card.iMultiverseID = iID;
-    card.sNameDe = sNameDe;
-    card.sNameEn = sName;
-    card.sSet = sSet;
-    card.dValue = dValue;
-
-    qmMultiverse.insert(iID, sName);
-    qmOracle.insert(iID, card);
-}*/
-
 void PCMWindow::on_pbOpenOutputs_clicked()
 {
     if(fMyCollectionOutput.device())
@@ -778,18 +612,6 @@ void PCMWindow::on_pbOpenOutputs_clicked()
     }
 }
 
-QString OracleCard::getImagePath() const
-{
-    QDir path(QString("%1/%2").arg(sImagePath).arg(sID));
-    path.mkpath(".");
-    return QString("%3/%1/%2.jpg").arg(sID).arg(sSequenceNumber).arg(sImagePath);
-}
-
-QString OracleCard::getImageURL() const
-{
-    return QString("http://gatherer.wizards.com/Handlers/Image.ashx?multiverseid=%1&type=card").arg(iMultiverseID);
-}
-
 void PCMWindow::StatusString(QString sMessage, bool bError)
 {
     ui->teStatus->append(QString("<font color=\"%1\">%2</font>\r\n")
@@ -802,8 +624,6 @@ void PCMWindow::StatusString(QString sMessage, bool bError)
 
 void PCMWindow::on_soundsLocationLineEdit_textChanged(const QString &arg1)
 {
-    int index = arg1.lastIndexOf('/');
-    int length = arg1.length();
     if(arg1.lastIndexOf('/') == arg1.length() - 1)
     {
         qTrash = QUrl::fromLocalFile(arg1 + "trashcan.wav");
@@ -815,4 +635,9 @@ void PCMWindow::on_soundsLocationLineEdit_textChanged(const QString &arg1)
     {
         //ui->
     }
+}
+
+bool PCMWindow::isFoil()
+{
+    return ui->cbScanningFoils->isChecked();
 }
