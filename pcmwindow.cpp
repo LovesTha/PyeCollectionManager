@@ -106,7 +106,8 @@ void PCMWindow::TCPDisconnected()
 
 void PCMWindow::ScryGlassRequestReceived()
 {
-    if(defaultCard) HandleSingleCard(*defaultCard);
+    if(ui->hlCardImageNSetChoice->count() > 1)
+        ((SetChoice*)ui->hlCardImageNSetChoice->itemAt(1)->layout()->itemAt(0)->widget())->click();
 
     QTcpSocket *socket = static_cast<QTcpSocket*>(sender());
     QByteArray buffer;
@@ -276,8 +277,8 @@ void PCMWindow::HandleMultipleCards(OracleCard card, QList<quint64> lCardIDs)
 {
     ui->cardAction->setText("Multiple Versions");
     ui->lcdCollectionQuantity->display(-1);
-    //first we figure out if the price range falls within acceptable bounds for trashing (which we never do to foils)
-    if(!isFoil() && Needed(card))
+    //first we figure out if the price range falls within acceptable bounds for trashing (which we never do to foils and cards we want)
+    if(!isFoil() && !Needed(card))
     {
         bool trashable = true;
         InventoryCard priceCard(-1);
@@ -315,9 +316,6 @@ void PCMWindow::HandleMultipleCards(OracleCard card, QList<quint64> lCardIDs)
         thisChoice->setParent(MySetSelectorLayout->widget());
         MySetSelectorLayout->addWidget((QWidget*)thisChoice);
         connect(thisChoice, SIGNAL(clicked(bool)), this, SLOT(setSelected()));
-
-        //record a default incase the user scans a new card to confirm set
-        if(!defaultCard) defaultCard = new OracleCard(card);
     }
 
     ui->hlCardImageNSetChoice->addLayout(MySetSelectorLayout->layout());
@@ -329,6 +327,12 @@ void PCMWindow::setSelected()
     OracleCard card = set->MyCard;
     HandleSingleCard(card);
 
+    CleanSetSelection();
+}
+
+void PCMWindow::CleanSetSelection()
+{
+
     //set has been selected, clean up and remove the option to select a set
     QLayoutItem *item;
     //while ((item = ((QLayout*)set->parent())->takeAt(0)) != 0)
@@ -338,12 +342,6 @@ void PCMWindow::setSelected()
     }
     item = ui->hlCardImageNSetChoice->takeAt(1);
     item->layout()->deleteLater();
-
-    if(defaultCard)
-    {
-        delete defaultCard;
-        defaultCard = 0;
-    }
 }
 
 

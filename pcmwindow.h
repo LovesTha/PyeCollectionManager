@@ -65,11 +65,11 @@ private:
 
     void HandleSingleCard(OracleCard card);
     void HandleMultipleCards(OracleCard card, QList<quint64> lCardIDs);
-    OracleCard* defaultCard;
     void trash(InventoryCard card);
 
     bool isFoil();
     bool Needed(OracleCard card, int *iRegCount = 0, int *iFoilCnt = 0);
+    void CleanSetSelection();
 
 private slots:
     void NewTCPConnection();
