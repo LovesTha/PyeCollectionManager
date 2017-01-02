@@ -20,7 +20,7 @@ QString OracleCard::getLogoPath() const
 {
     QDir path(QString("%1/%2").arg(sImagePath).arg(sMCISID));
     path.mkpath(".");
-    return QString("%3/%1/%2.jpg").arg(sMCISID).arg(cRarity).arg(sImagePath);
+    return QString("%3/%1/%2.jpg").arg(sMCISID).arg(cRarity).arg(sImagePath); //path makes sense because it will also have all the card images in that folder, not just the few rarities
 }
 
 QString OracleCard::getLogoURL() const

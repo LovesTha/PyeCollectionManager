@@ -32,9 +32,9 @@ private:
     Ui::PCMWindow *ui;
     QTcpServer *pMyTCPServer;
 
-    QMap<quint64, InventoryCard>        qmMyRegularInventory, qmMyFoilInventory;
+    QMap<quint64, InventoryCard>        qmMyRegularCollectorInventory, qmMyFoilCollectorInventory;
+    QMap<QString, InventoryCard>        qmMyRegularPlayerInventory, qmMyFoilPlayerInventory;
     QMap<quint64, InventoryCard>        qmMyRegularPriceGuide, qmMyFoilPriceGuide;
-    QMap<quint64, QString>    qmMultiverse;
     QMultiMap<QString, quint64>    qmmMultiInverse;
     QMap<QString, QString>    qmTheSetCode;
     QMap<quint64, OracleCard> qmOracle;
@@ -63,9 +63,16 @@ private:
     //my sounds
     QUrl qTrash, qCoins, qKeep, qWeird;
 
+    void HandleSingleCard(OracleCard card);
+    void HandleMultipleCards(OracleCard card, QList<quint64> lCardIDs);
+    OracleCard* defaultCard;
+    void trash(InventoryCard card);
+
+    bool isFoil();
+
 private slots:
     void NewTCPConnection();
-    void TCPSocketReadReady();
+    void ScryGlassRequestReceived();
     void TCPDisconnected();
     void on_pbOpenCollection_clicked();
     void on_pbOpenDatabase_clicked();
@@ -73,6 +80,7 @@ private slots:
     void ImageFetchFinished(QNetworkReply* reply);
     void on_pbFullCardListDB_clicked();
     void on_soundsLocationLineEdit_textChanged(const QString &arg1);
+    void setSelected();
 };
 
 #endif // PCMWINDOW_H
