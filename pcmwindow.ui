@@ -11,7 +11,11 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>PCMWindow</string>
+   <string>Pye Collection Manager - 0.1-Alpha-r2</string>
+  </property>
+  <property name="windowIcon">
+   <iconset>
+    <normaloff>PCMLogo.ico</normaloff>PCMLogo.ico</iconset>
   </property>
   <widget class="QWidget" name="centralWidget">
    <layout class="QGridLayout" name="gridLayout">

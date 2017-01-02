@@ -32,6 +32,8 @@ PCMWindow::PCMWindow(QWidget *parent) :
     QCoreApplication::setOrganizationDomain("cerberos.id.au");
     QCoreApplication::setApplicationName("Collection Manager");
 
+    setWindowTitle("Pye Collection Manager - 0.1-Alpha-r2");
+
     //Loading Settings
     QSettings Config;
     ui->cardDatabaseLocationLineEdit->setText(Config.value("Oracle Database Location", "/mtg/AllSetsArray.json").toString());
