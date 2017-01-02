@@ -7,14 +7,14 @@
 
 SetChoice::SetChoice(OracleCard Card, QWidget *parent) : QPushButton(parent), MyCard(Card), manager(0)
 {
-    setText(MyCard.sMySet);
+    setText(MyCard.mySet->sMySet);
     setFlat(true);
     QPalette pal = palette();
     pal.setColor(QPalette::Button, QColor(Qt::white));
     setAutoFillBackground(true);
     setPalette(pal);
 
-    QString sIconPath = MyCard.getLogoPath();
+    QString sIconPath = MyCard.mySet->getLogoPath(MyCard.cRarity);
     QFileInfo ImageFileInfo(sIconPath);
     if(ImageFileInfo.exists() && ImageFileInfo.isFile())
     {
@@ -25,7 +25,7 @@ SetChoice::SetChoice(OracleCard Card, QWidget *parent) : QPushButton(parent), My
         setIcon(QIcon());
         manager = new QNetworkAccessManager();
         connect(manager, SIGNAL(finished(QNetworkReply*)), this, SLOT(ImageFetchFinished(QNetworkReply*)));
-        manager->get(QNetworkRequest(QUrl(MyCard.getLogoURL())));
+        manager->get(QNetworkRequest(QUrl(MyCard.mySet->getLogoURL(MyCard.cRarity))));
         sMyImageRequested = sIconPath;
     }
 }

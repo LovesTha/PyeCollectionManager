@@ -240,7 +240,7 @@ void PCMWindow::HandleSingleCard(OracleCard card)
         StatusString(QString("Trade: %1 ($%2)").arg(invRegularCard.sMyName).arg((isFoil() ? invFoilCard : invRegularCard).dMyMarketPrice));
         mySound.setMedia(qCoins);
         mySound.play();
-        fMyTradesOutput << "1,\"" << card.sNameEn << "\",\"" << card.sMySet << "\",Near Mint,English,";
+        fMyTradesOutput << "1,\"" << card.sNameEn << "\",\"" << card.mySet->sMySet << "\",Near Mint,English,";
         if(isFoil())
             fMyTradesOutput << "Foil";
         fMyTradesOutput << "\n";
@@ -271,6 +271,11 @@ void PCMWindow::trash(InventoryCard card)
 bool quint64GreaterThan(const quint64 &v1, const quint64 &v2)
 {
     return v1 > v2;
+}
+bool oracleCardGreaterThan(const OracleCard &v1, const OracleCard &v2)
+{
+    return v1.mySet->LastSelected > v2.mySet->LastSelected;
+    return v1.iMultiverseID > v2.iMultiverseID;
 }
 void PCMWindow::HandleMultipleCards(OracleCard card, QList<quint64> lCardIDs)
 {
@@ -304,14 +309,18 @@ void PCMWindow::HandleMultipleCards(OracleCard card, QList<quint64> lCardIDs)
     //As we haven't been able to trash the card, now we must determine what set it is from
     QGridLayout *MySetSelectorLayout = new QGridLayout();
 
-    //we want the list to sort most recent set first, greatest multiverseID first is a close aproximation of that
-    qSort(lCardIDs.begin(), lCardIDs.end(), quint64GreaterThan);
-
-    int count = 0;
+    //we want the list to sort most recent selected set first, then most recently printed.
+    QList<OracleCard> OracleCards;
     for(auto&& CardID: lCardIDs)
     {
         OracleCard priceCard = qmOracle.value(CardID);
+        OracleCards.append(priceCard);
+    }
+    qSort(OracleCards.begin(), OracleCards.end(), oracleCardGreaterThan);
 
+    int count = 0;
+    for(auto&& priceCard: OracleCards)
+    {
         SetChoice *thisChoice = new SetChoice(priceCard, MySetSelectorLayout->widget());
         thisChoice->setParent(MySetSelectorLayout->widget());
         MySetSelectorLayout->addWidget((QWidget*)thisChoice, count % 10, count / 10);
@@ -326,6 +335,7 @@ void PCMWindow::setSelected()
 {
     SetChoice *set = (SetChoice*)this->sender();
     OracleCard card = set->MyCard;
+    card.mySet->LastSelected = QDateTime::currentDateTime(); //sort this to the top now.
     HandleSingleCard(card);
 
     CleanSetSelection();
@@ -441,6 +451,7 @@ void PCMWindow::on_pbOpenDatabase_clicked()
     qmOracle.clear();
 
     OracleCard::sImagePath = ui->imageLocationLineEdit->text();
+    OracleSet::sImagePath = ui->imageLocationLineEdit->text();
 
     QFile fInput(ui->cardDatabaseLocationLineEdit->text());
     if(fInput.open(QIODevice::ReadOnly | QIODevice::Text))
@@ -474,6 +485,13 @@ void PCMWindow::on_pbOpenDatabase_clicked()
                 sGSID = jSet["code"].toString();
             else
                 sGSID = jSet["gathererCode"].toString();
+
+            OracleSet *ThisSet = new OracleSet;
+            ThisSet->sMySet = jSet["name"].toString();
+            ThisSet->sMCISID = sMCISID;
+            ThisSet->sGSID = sGSID;
+            ThisSet->LastSelected = QDateTime::currentDateTime();
+
 
             for(auto&& cardIter: jCards)
             {
@@ -517,9 +535,7 @@ void PCMWindow::on_pbOpenDatabase_clicked()
                     //int iasf = 999;
 
                 card.cRarity = jCard["rarity"].toString().at(0).toLatin1();
-                card.sMySet = jSet["name"].toString();
-                card.sMCISID = sMCISID;
-                card.sGSID = sGSID;
+                card.mySet = ThisSet;
 
                 qmmMultiInverse.insert(sName, iID); //note this is now a Multi Map, this insert will never replace
                 qmOracle.insert(iID, card);
@@ -552,13 +568,13 @@ void PCMWindow::on_pbFullCardListDB_clicked()
             continue; //Deckbox doesn't like how we would generate tokens
         if(card.sNameEn.contains(QString("Big Furry Monster"), Qt::CaseInsensitive))
             continue; //Deckbox doesn't like how we generate this name
-        if(card.sMySet.contains(QString("Tempest Remastered"), Qt::CaseInsensitive))
+        if(card.mySet->sMySet.contains(QString("Tempest Remastered"), Qt::CaseInsensitive))
             continue; //Not real cards
-        if(card.sMySet.contains(QString("Vintage Masters"), Qt::CaseInsensitive))
+        if(card.mySet->sMySet.contains(QString("Vintage Masters"), Qt::CaseInsensitive))
             continue; //Not real cards
-        if(card.sMySet.contains(QString("Vanguard"), Qt::CaseInsensitive))
+        if(card.mySet->sMySet.contains(QString("Vanguard"), Qt::CaseInsensitive))
             continue; //Deckbox doesn't like how we would Avatars
-        if(card.sMySet.contains(QString("Masters Edition"), Qt::CaseInsensitive))
+        if(card.mySet->sMySet.contains(QString("Masters Edition"), Qt::CaseInsensitive))
             continue; //Deckbox doesn't like how we would Avatars
         fFullCardListOutput << card.deckBoxInventoryLine(false);
         fFullCardListOutput << card.deckBoxInventoryLine(true);

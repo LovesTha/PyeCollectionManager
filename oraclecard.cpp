@@ -3,12 +3,13 @@
 #include <QDir>
 
 QString OracleCard::sImagePath = "/tmp/";
+QString OracleSet::sImagePath = "/tmp/";
 
 QString OracleCard::getImagePath() const
 {
-    QDir path(QString("%1/%2").arg(sImagePath).arg(sMCISID));
+    QDir path(QString("%1/%2").arg(sImagePath).arg(mySet->sMCISID));
     path.mkpath(".");
-    return QString("%3/%1/%2.jpg").arg(sMCISID).arg(sSequenceNumber).arg(sImagePath);
+    return QString("%3/%1/%2.jpg").arg(mySet->sMCISID).arg(sSequenceNumber).arg(sImagePath);
 }
 
 QString OracleCard::getImageURL() const
@@ -16,14 +17,14 @@ QString OracleCard::getImageURL() const
     return QString("http://gatherer.wizards.com/Handlers/Image.ashx?multiverseid=%1&type=card").arg(iMultiverseID);
 }
 
-QString OracleCard::getLogoPath() const
+QString OracleSet::getLogoPath(char cRarity) const
 {
     QDir path(QString("%1/%2").arg(sImagePath).arg(sMCISID));
     path.mkpath(".");
     return QString("%3/%1/%2.jpg").arg(sMCISID).arg(cRarity).arg(sImagePath); //path makes sense because it will also have all the card images in that folder, not just the few rarities
 }
 
-QString OracleCard::getLogoURL() const
+QString OracleSet::getLogoURL(char cRarity) const
 {
     return QString("http://gatherer.wizards.com/Handlers/Image.ashx?type=symbol&set=%1&size=large&rarity=%2").arg(sGSID).arg(cRarity);
 }
@@ -40,7 +41,7 @@ QString OracleCard::deckBoxInventoryLine(bool Foil) const
     if(sName.at(0) != '\"') //only if it doesn't start with a " already
         sName = QString("\"") + sName + "\"";
 
-    QString sSetLocal = this->sMySet;
+    QString sSetLocal = this->mySet->sMySet;
     if(sSetLocal == QString("Planechase 2012 Edition"))
         sSetLocal = "Planechase 2012";
     if(sSetLocal == QString("Magic: The Gathering-Commander"))
