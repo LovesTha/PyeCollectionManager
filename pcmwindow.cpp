@@ -166,16 +166,40 @@ void PCMWindow::HandleSingleCard(OracleCard card)
 {
     quint64 multiverseID = card.iMultiverseID;
 
+    int iRegularCount = 0;
+    int iFoilCount = 0;
+
     InventoryCard invRegularCard = qmMyRegularCollectorInventory.value(multiverseID, InventoryCard(0));
     InventoryCard invFoilCard    = qmMyFoilCollectorInventory   .value(multiverseID, InventoryCard(0));
+
+    if(ui->IsAPlayerCheckBox)
+    {
+        //players don't care about printings, just about owning the card
+        QList<quint64> lPrintingIDs = qmmMultiInverse.values(card.sNameEn);
+        for(auto&& CardID: lPrintingIDs)
+        {
+            InventoryCard tmpRegularCard = qmMyRegularCollectorInventory.value(CardID, InventoryCard(0));
+            InventoryCard tmpFoilCard    = qmMyFoilCollectorInventory   .value(CardID, InventoryCard(0));
+
+            iRegularCount += tmpRegularCard.iMyCount;
+            iFoilCount += tmpFoilCard.iMyCount;
+        }
+    }
+    else
+    {
+        //collectors care about each individual printing seperately
+        iRegularCount += invRegularCard.iMyCount;
+        iFoilCount += invFoilCard.iMyCount;
+    }
+
     InventoryCard priceCard = qmMyRegularPriceGuide.value(multiverseID, InventoryCard(0));
 
-    ui->lcdCollectionQuantity->display((isFoil() ? invFoilCard : invRegularCard).iMyCount);
+    ui->lcdCollectionQuantity->display(isFoil() ? iFoilCount : iRegularCount);
 
-    if((invFoilCard.iMyCount + invRegularCard.iMyCount < ui->quantityToKeepSpinBox->value()) //we don't have enough of any variant
-            ||(isFoil() && invFoilCard.iMyCount < ui->quantityToKeepSpinBox->value())) //this is a foil, and we don't have enough foils
+    if((iFoilCount + iRegularCount < ui->quantityToKeepSpinBox->value()) //we don't have enough of any variant
+            ||(isFoil() && iFoilCount < ui->quantityToKeepSpinBox->value())) //this is a foil, and we don't have enough foils
     {
-        //card not in inventory
+        //insufficient cards not in inventory
         ui->cardAction->setText("KEEP!");
         StatusString(QString("Keep: %1").arg(invRegularCard.sMyName));
         mySound.setMedia(qKeep);
