@@ -32,3 +32,10 @@ Makefile*
 #QtCtreator Qml
 *.qmlproject.user
 *.qmlproject.user.*
+
+
+*.zip
+release
+debug
+pyecollectionmanager_plugin_import.cpp
+*.exe
