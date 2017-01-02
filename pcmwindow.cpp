@@ -162,15 +162,13 @@ void PCMWindow::ScryGlassRequestReceived()
     }
 }
 
-void PCMWindow::HandleSingleCard(OracleCard card)
+bool PCMWindow::Needed(OracleCard card, int *iRegCount, int *iFoilCnt)
 {
-    quint64 multiverseID = card.iMultiverseID;
-
     int iRegularCount = 0;
     int iFoilCount = 0;
 
-    InventoryCard invRegularCard = qmMyRegularCollectorInventory.value(multiverseID, InventoryCard(0));
-    InventoryCard invFoilCard    = qmMyFoilCollectorInventory   .value(multiverseID, InventoryCard(0));
+    InventoryCard invRegularCard = qmMyRegularCollectorInventory.value(card.iMultiverseID, InventoryCard(0));
+    InventoryCard invFoilCard    = qmMyFoilCollectorInventory   .value(card.iMultiverseID, InventoryCard(0));
 
     if(ui->IsAPlayerCheckBox)
     {
@@ -192,12 +190,28 @@ void PCMWindow::HandleSingleCard(OracleCard card)
         iFoilCount += invFoilCard.iMyCount;
     }
 
-    InventoryCard priceCard = qmMyRegularPriceGuide.value(multiverseID, InventoryCard(0));
+    if(iRegCount) *iRegCount = iRegularCount;
+    if(iFoilCnt)   *iFoilCnt = iFoilCount;
 
     ui->lcdCollectionQuantity->display(isFoil() ? iFoilCount : iRegularCount);
 
-    if((iFoilCount + iRegularCount < ui->quantityToKeepSpinBox->value()) //we don't have enough of any variant
-            ||(isFoil() && iFoilCount < ui->quantityToKeepSpinBox->value())) //this is a foil, and we don't have enough foils
+    return (iFoilCount + iRegularCount < ui->quantityToKeepSpinBox->value()) //we don't have enough of any variant
+            ||(isFoil() && iFoilCount < ui->quantityToKeepSpinBox->value()); //this is a foil, and we don't have enough foils
+}
+
+void PCMWindow::HandleSingleCard(OracleCard card)
+{
+    quint64 multiverseID = card.iMultiverseID;
+
+    InventoryCard invRegularCard = qmMyRegularCollectorInventory.value(multiverseID, InventoryCard(0));
+    InventoryCard invFoilCard    = qmMyFoilCollectorInventory   .value(multiverseID, InventoryCard(0));
+
+    int iRegularCount = 0;
+    int iFoilCount = 0;
+
+    InventoryCard priceCard = qmMyRegularPriceGuide.value(multiverseID, InventoryCard(0));
+
+    if(Needed(card, &iRegularCount, &iFoilCount))
     {
         //insufficient cards not in inventory
         ui->cardAction->setText("KEEP!");
@@ -263,7 +277,7 @@ void PCMWindow::HandleMultipleCards(OracleCard card, QList<quint64> lCardIDs)
     ui->cardAction->setText("Multiple Versions");
     ui->lcdCollectionQuantity->display(-1);
     //first we figure out if the price range falls within acceptable bounds for trashing (which we never do to foils)
-    if(!isFoil())
+    if(!isFoil() && Needed(card))
     {
         bool trashable = true;
         InventoryCard priceCard(-1);

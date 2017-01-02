@@ -69,6 +69,7 @@ private:
     void trash(InventoryCard card);
 
     bool isFoil();
+    bool Needed(OracleCard card, int *iRegCount = 0, int *iFoilCnt = 0);
 
 private slots:
     void NewTCPConnection();
