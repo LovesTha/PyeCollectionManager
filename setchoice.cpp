@@ -3,14 +3,18 @@
 #include <QFileInfo>
 #include <QUrl>
 #include <QPixmap>
+#include <QPalette>
 
 SetChoice::SetChoice(OracleCard Card, QWidget *parent) : QPushButton(parent), MyCard(Card), manager(0)
 {
-
-
     setText(MyCard.sMySet);
-    QString sIconLocation = MyCard.getLogoPath();
-    QString sIconPath = MyCard.getImagePath();
+    setFlat(true);
+    QPalette pal = palette();
+    pal.setColor(QPalette::Button, QColor(Qt::white));
+    setAutoFillBackground(true);
+    setPalette(pal);
+
+    QString sIconPath = MyCard.getLogoPath();
     QFileInfo ImageFileInfo(sIconPath);
     if(ImageFileInfo.exists() && ImageFileInfo.isFile())
     {
@@ -30,11 +34,11 @@ void SetChoice::DisplayImage(QString sImagePath)
 {
     QImage qImage(sImagePath);
     QPixmap image(QPixmap::fromImage(qImage));
-    image = image.scaled(120, 120,
+    image = image.scaled(50, 50,
                          Qt::AspectRatioMode::KeepAspectRatio,
                          Qt::SmoothTransformation);
     setIcon(image);
-    setIconSize(QSize(120, 120));
+    setIconSize(QSize(50, 50));
 }
 
 void SetChoice::ImageFetchFinished(QNetworkReply* reply)

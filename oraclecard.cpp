@@ -25,7 +25,7 @@ QString OracleCard::getLogoPath() const
 
 QString OracleCard::getLogoURL() const
 {
-    return QString("http://gatherer.wizards.com/Handlers/Image.ashx?type=symbol&set=%1&size=large&rarity=%2").arg(sMCISID).arg(cRarity);
+    return QString("http://gatherer.wizards.com/Handlers/Image.ashx?type=symbol&set=%1&size=large&rarity=%2").arg(sGSID).arg(cRarity);
 }
 
 QString OracleCard::deckBoxInventoryLine(bool Foil) const

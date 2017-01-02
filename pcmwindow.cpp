@@ -106,6 +106,8 @@ void PCMWindow::TCPDisconnected()
 
 void PCMWindow::ScryGlassRequestReceived()
 {
+    if(defaultCard) HandleSingleCard(*defaultCard);
+
     QTcpSocket *socket = static_cast<QTcpSocket*>(sender());
     QByteArray buffer;
     while (socket->bytesAvailable() > 0)
@@ -195,7 +197,7 @@ void PCMWindow::HandleSingleCard(OracleCard card)
     }
     else if((priceCard.dMyMarketPrice > ui->tradeValueThresholdDoubleSpinBox->value()) | isFoil())
     {
-        ui->cardAction->setText("TRADE!");
+        ui->cardAction->setText("Trade");
         StatusString(QString("Trade: %1 ($%2)").arg(invRegularCard.sMyName).arg((isFoil() ? invFoilCard : invRegularCard).dMyMarketPrice));
         mySound.setMedia(qCoins);
         mySound.play();
@@ -220,7 +222,7 @@ void PCMWindow::HandleSingleCard(OracleCard card)
 
 void PCMWindow::trash(InventoryCard card)
 {
-    ui->cardAction->setText("trash");
+    ui->cardAction->setText("Trash");
     StatusString(QString("Trash: %1").arg(card.sMyName));
     mySound.setMedia(qTrash);
     mySound.play();
@@ -234,6 +236,8 @@ bool quint64GreaterThan(const quint64 &v1, const quint64 &v2)
 
 void PCMWindow::HandleMultipleCards(OracleCard card, QList<quint64> lCardIDs)
 {
+    ui->cardAction->setText("Multiple Versions");
+    ui->lcdCollectionQuantity->display(-1);
     //first we figure out if the price range falls within acceptable bounds for trashing (which we never do to foils)
     if(!isFoil())
     {
@@ -260,7 +264,7 @@ void PCMWindow::HandleMultipleCards(OracleCard card, QList<quint64> lCardIDs)
     }
 
     //As we haven't been able to trash the card, now we must determine what set it is from
-    QVBoxLayout MySetSelectorLayout;
+    QVBoxLayout *MySetSelectorLayout = new QVBoxLayout();
 
     //we want the list to sort most recent set first, greatest multiverseID first is a close aproximation of that
     qSort(lCardIDs.begin(), lCardIDs.end(), quint64GreaterThan);
@@ -269,13 +273,16 @@ void PCMWindow::HandleMultipleCards(OracleCard card, QList<quint64> lCardIDs)
     {
         OracleCard priceCard = qmOracle.value(CardID);
 
-        SetChoice thisChoice(priceCard);
+        SetChoice *thisChoice = new SetChoice(priceCard, MySetSelectorLayout->widget());
+        thisChoice->setParent(MySetSelectorLayout->widget());
+        MySetSelectorLayout->addWidget((QWidget*)thisChoice);
+        connect(thisChoice, SIGNAL(clicked(bool)), this, SLOT(setSelected()));
 
         //record a default incase the user scans a new card to confirm set
         if(!defaultCard) defaultCard = new OracleCard(card);
     }
 
-    ui->hlCardImageNSetChoice->addLayout(MySetSelectorLayout.layout());
+    ui->hlCardImageNSetChoice->addLayout(MySetSelectorLayout->layout());
 }
 
 void PCMWindow::setSelected()
@@ -283,7 +290,17 @@ void PCMWindow::setSelected()
     SetChoice *set = (SetChoice*)this->sender();
     OracleCard card = set->MyCard;
     HandleSingleCard(card);
-    set->parent()->deleteLater(); //set has been selected, clean up and remove the option to select a set
+
+    //set has been selected, clean up and remove the option to select a set
+    QLayoutItem *item;
+    //while ((item = ((QLayout*)set->parent())->takeAt(0)) != 0)
+    while ((item = ui->hlCardImageNSetChoice->itemAt(1)->layout()->takeAt(0)) != 0)
+    {
+        item->widget()->deleteLater();
+    }
+    item = ui->hlCardImageNSetChoice->takeAt(1);
+    item->layout()->deleteLater();
+
     if(defaultCard)
     {
         delete defaultCard;
