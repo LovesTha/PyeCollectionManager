@@ -37,5 +37,6 @@ Makefile*
 *.zip
 release
 debug
+Videos
 pyecollectionmanager_plugin_import.cpp
 *.exe
