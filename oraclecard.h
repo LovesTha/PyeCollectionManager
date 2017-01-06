@@ -26,5 +26,6 @@ public:
     QString getImagePath() const;
     QString getImageURL() const;
     QString deckBoxInventoryLine(bool Foil) const;
+    bool operator==(const OracleCard& rhs) const;
 };
 #endif // ORACLECARD_H

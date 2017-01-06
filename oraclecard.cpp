@@ -60,3 +60,8 @@ QString OracleCard::deckBoxInventoryLine(bool Foil) const
     sInventory = sInventory.arg(sName).arg(sSetLocal).arg(this->sSequenceNumber).arg(Foil ? "Foil" : ""); //arg 4 is Foil or blank
     return sInventory;
 }
+
+bool OracleCard::operator==(const OracleCard& rhs) const
+{
+    return this->iMultiverseID == rhs.iMultiverseID;
+}

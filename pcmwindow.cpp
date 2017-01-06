@@ -146,7 +146,7 @@ void PCMWindow::ScryGlassRequestReceived()
                     ui->imageLabel->setText("Fetching Image...");
                     StatusString("Fetching Image");
                     manager->get(QNetworkRequest(QUrl(card.getImageURL())));
-                    sMyImageRequested = sImagePath;
+                    lRequestedImages.append(card);
                 }
 
                 //having started attempting to display the image, lets try and figure out if this card has multiple printings
@@ -374,14 +374,27 @@ void PCMWindow::ImageFetchFinished(QNetworkReply* reply)
    QImage* img2 = new QImage();
    img2->loadFromData(reply->readAll());
 
-   if(img2->isNull())
+   QNetworkRequest thisRequest = reply->request();
+   for(auto&& requestedCard: lRequestedImages)
    {
-       ui->imageLabel->setText("Image failed to fetch");
-       StatusString(QString("Failed to load image: %1").arg(sMyImageRequested), true);
+       if(QUrl(requestedCard.getImageURL()).toDisplayString() == thisRequest.url().toDisplayString())
+       {
+           if(img2->isNull())
+           {
+               ui->imageLabel->setText("Image failed to fetch");
+               StatusString(QString("Failed to load image: %1").arg(requestedCard.getImageURL()), true);
+           }
+           else
+           {
+               img2->save(requestedCard.getImagePath(), "JPG", 99);
+               DisplayImage(requestedCard.getImagePath());
+           }
+           lRequestedImages.removeOne(requestedCard);
+           return;
+       }
    }
 
-   img2->save(sMyImageRequested, "JPG", 99);
-   DisplayImage(sMyImageRequested);
+   StatusString(QString("Unknown http response, not sure who made this request: %1").arg(thisRequest.url().toDisplayString()));
 }
 
 void PCMWindow::on_pbOpenCollection_clicked()

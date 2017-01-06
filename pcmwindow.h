@@ -51,7 +51,8 @@ private:
     //void ReadCard();
 
     QNetworkAccessManager *manager;
-    QString sMyImageRequested;
+    QList<OracleCard> lRequestedImages;
+    //QString sMyImageRequested;
     void DisplayImage(QString);
 
     QTextStream fMyCollectionOutput, fMyTradesOutput;
