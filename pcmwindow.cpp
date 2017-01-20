@@ -47,6 +47,7 @@ PCMWindow::PCMWindow(QWidget *parent) :
     ui->quantityToKeepSpinBox->setValue(Config.value("Quantity To Keep", "4").toInt());
     ui->soundsLocationLineEdit->setText(Config.value("Sounds Location", "/mtg/sounds/").toString());
     ui->IsAPlayerCheckBox->setChecked(Config.value("Treat All Printings As a Single Card", "true").toBool());
+    ui->cardsToKeepMoreCoppiesOfLineEdit->setText(Config.value("List of Cards to Keep Extra Coppies of", "/mtg/WhiteList.csv").toString());
 
     on_pbOpenDatabase_clicked();
     on_pbOpenCollection_clicked();
@@ -67,7 +68,8 @@ PCMWindow::~PCMWindow()
     Config.setValue("Trade Minimum Value", ui->tradeValueThresholdDoubleSpinBox->value());
     Config.setValue("Quantity To Keep", ui->quantityToKeepSpinBox->value());
     Config.setValue("Sounds Location", ui->soundsLocationLineEdit->text());
-    Config.value("Treat All Printings As a Single Card", ui->IsAPlayerCheckBox->isChecked());
+    Config.setValue("Treat All Printings As a Single Card", ui->IsAPlayerCheckBox->isChecked());
+    Config.setValue("List of Cards to Keep Extra Coppies of", ui->cardsToKeepMoreCoppiesOfLineEdit->text());
 
     fMyTradesOutput.flush();
     if(fMyTradesOutput.device())
@@ -404,6 +406,8 @@ void PCMWindow::on_pbOpenCollection_clicked()
     qmMyRegularPriceGuide.clear();
     qmMyFoilPriceGuide.clear();
 
+    StatusString("Attempting to load white list");
+    LoadInventory(&qmMyRegularCollectorInventory, &qmMyFoilCollectorInventory, ui->cardsToKeepMoreCoppiesOfLineEdit->text(), true, true); //inventory as white list (second true is to invert the numbers, use negative stock to indicate we need more
     StatusString("Attempting to load previous run inventory in Deckbox format");
     LoadInventory(&qmMyRegularCollectorInventory, &qmMyFoilCollectorInventory, ui->collectionOutputLineEdit->text(), true); //inventory from previous runs
     StatusString("Attempting to load exported Deckbox Inventory");
@@ -415,7 +419,8 @@ void PCMWindow::on_pbOpenCollection_clicked()
 void PCMWindow::LoadInventory(QMap<quint64, InventoryCard>* qmRegularInventory,
                               QMap<quint64, InventoryCard>* qmFoilInventory,
                               QString sFileSource,
-                              bool AddNotMax)
+                              bool AddNotMax,
+                              bool InvertValue)
 {
     QFile fInput(sFileSource);
     QMap<quint64, InventoryCard>* qmRightInventory;
@@ -427,11 +432,19 @@ void PCMWindow::LoadInventory(QMap<quint64, InventoryCard>* qmRegularInventory,
         while (!in.atEnd())
         {
             line = in.readLine();
+            if(line.length() < 5)
+                continue;
             InventoryCard card(line);
+            if(InvertValue)
+                card.iMyCount = 0 - card.iMyCount;
+
             qmRightInventory = card.bMyFoil ? qmFoilInventory : qmRegularInventory;
             QList<quint64> viMultiverseIDs = qmmMultiInverse.values(card.sMyName);
             if(viMultiverseIDs.length() == 0)
+            {
+                StatusString(QString("No Multiverse ID for card from string \"%1\"").arg(line), true);
                 continue; //we can't handle things that have no multiverse ID
+            }
             for(auto&& iMultiverseID: viMultiverseIDs)
             {
                 if(qmRightInventory->contains(iMultiverseID))
@@ -455,8 +468,8 @@ void PCMWindow::LoadInventory(QMap<quint64, InventoryCard>* qmRegularInventory,
     }
     else
     {
-        StatusString(QString("Collection or Pricelist not loaded, does the file exist?")
-                     .arg(ui->tradeOutputLineEdit->text()), true);
+        StatusString(QString("Collection or Pricelist not loaded, does the file exist? (%1)")
+                     .arg(sFileSource), true);
     }
 }
 

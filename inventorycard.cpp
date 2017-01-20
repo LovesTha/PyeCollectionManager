@@ -9,7 +9,8 @@ QMap<QString, unsigned int> InventoryCard::qmTheStringIndex;
 
 void InventoryCard::InitOrder(QString sInitLine)
 {
-    if(pviTheFieldIndexes == 0) pviTheFieldIndexes = new QVector<int>;
+    if(pviTheFieldIndexes) delete pviTheFieldIndexes;
+    pviTheFieldIndexes = new QVector<int>;
     for(int i = 0; i < 17; ++i) pviTheFieldIndexes->append(-1);
 
     QStringList elements = sInitLine.split(",");
@@ -113,7 +114,7 @@ InventoryCard::InventoryCard(int Quantity)
 InventoryCard::InventoryCard(QString sInitLine) : InventoryCard(-1)
 {
     QStringList elements = sInitLine.split(",");
-    if(elements.size() < 17)
+    if(elements.size() < 2)
         return;
 
     if(!InitOrderEstablished)
@@ -150,16 +151,18 @@ InventoryCard::InventoryCard(QString sInitLine) : InventoryCard(-1)
     if(pviTheFieldIndexes->at(2) > -1)
         sMyName      = elements.at(pviTheFieldIndexes->at(2));
     else
-        dMyMarketPrice = 0;
+        sMyName      = "Invalid!?!?!";
 
     if(pviTheFieldIndexes->at(3) > -1)
         sMyEdition   = elements.at(pviTheFieldIndexes->at(3));
     else
         sMyEdition = "Unknown";
+
     if(pviTheFieldIndexes->at(5) > -1)
         sMyCondition = elements.at(pviTheFieldIndexes->at(5));
     else
         sMyCondition = "Near Mint";
+
     if(pviTheFieldIndexes->at(6) > -1)
         sMyLanguage  = elements.at(pviTheFieldIndexes->at(6));
     else

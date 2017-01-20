@@ -307,6 +307,16 @@
           <item row="11" column="1">
            <widget class="QCheckBox" name="IsAPlayerCheckBox"/>
           </item>
+          <item row="12" column="0">
+           <widget class="QLabel" name="cardsToKeepMoreCoppiesOfLabel">
+            <property name="text">
+             <string>Cards to Keep More Coppies of</string>
+            </property>
+           </widget>
+          </item>
+          <item row="12" column="1">
+           <widget class="QLineEdit" name="cardsToKeepMoreCoppiesOfLineEdit"/>
+          </item>
          </layout>
         </item>
         <item>

@@ -57,7 +57,7 @@ private:
 
     QTextStream fMyCollectionOutput, fMyTradesOutput;
 
-    void LoadInventory(QMap<quint64, InventoryCard>* qmRegularInventory, QMap<quint64, InventoryCard>* qmFoilInventory, QString sFileSource, bool AddNotMax);
+    void LoadInventory(QMap<quint64, InventoryCard>* qmRegularInventory, QMap<quint64, InventoryCard>* qmFoilInventory, QString sFileSource, bool AddNotMax, bool InvertValue = false);
 
     void StatusString(QString sMessage, bool bError = false);
 
