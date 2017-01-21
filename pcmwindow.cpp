@@ -702,7 +702,7 @@ void PCMWindow::on_pbFullCardListDB_clicked()
         }
         OracleCard card = pair.second;
         if(card.sSequenceNumber.contains("b"))
-            continue; //Deckbox doesn't want the second hard of split cards
+            continue; //Deckbox doesn't want the second half of split cards
         if(card.sNameEn.contains(QString("token"), Qt::CaseInsensitive))
             continue; //Deckbox doesn't like how we would generate tokens
         if(card.sNameEn.contains(QString("Big Furry Monster"), Qt::CaseInsensitive))
@@ -717,6 +717,13 @@ void PCMWindow::on_pbFullCardListDB_clicked()
             continue; //Deckbox doesn't like how we would Avatars
         fFullCardListOutputDeckBox << card.deckBoxInventoryLine(false);
         fFullCardListOutputDeckBox << card.deckBoxInventoryLine(true);
+
+        if((card.sNameEn == "Plains")
+                | (card.sNameEn == "Island")
+                | (card.sNameEn == "Swamp")
+                | (card.sNameEn == "Mountain")
+                | (card.sNameEn == "Forest"))
+            continue; //Puca doesn't like cards with multiple arts, at least not easily (there are still all the old cards to skip, but this is a decent start on those
         fFullCardListOutputPuca << card.pucaInventoryLine(false);
         fFullCardListOutputPuca << card.pucaInventoryLine(true);
     }
