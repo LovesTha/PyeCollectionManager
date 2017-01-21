@@ -55,6 +55,7 @@ PCMWindow::PCMWindow(QWidget *parent) :
     ui->IsAPlayerCheckBox->setChecked(Config.value("Treat All Printings As a Single Card", "true").toBool());
     ui->cardsToKeepMoreCoppiesOfLineEdit->setText(Config.value("List of Cards to Keep Extra Coppies of", "/mtg/WhiteList.csv").toString());
 
+    onStartOracleCheck();
     on_pbOpenDatabase_clicked();
     on_pbOpenCollection_clicked();
     on_pbOpenOutputs_clicked();
@@ -560,6 +561,7 @@ void PCMWindow::OracleFetchFinished(QNetworkReply *reply)
         if(bOracleVersionRetrieved)
             recordOracleVersion();
 
+        on_pbOpenDatabase_clicked();
     }
     else
     {
@@ -646,7 +648,11 @@ void PCMWindow::on_pbOpenDatabase_clicked()
                 }
 
                 card.sNameEn = card.sNameEn.replace("ö", "o");
-                card.sNameEn = card.sNameEn.replace("\"", "");
+                if(card.sNameEn.at(0) == '"')
+                {
+                    card.sNameEn = card.sNameEn.remove(0, 1);
+                    card.sNameEn = card.sNameEn.remove(card.sNameEn.length() - 1, 1);
+                }
 
                 if(card.sNameEn.contains("Ach! Han", Qt::CaseInsensitive))
                     int adsfasdfasdf = 999;

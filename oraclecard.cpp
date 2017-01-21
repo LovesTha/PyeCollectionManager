@@ -52,6 +52,8 @@ QString OracleCard::deckBoxInventoryLine(bool Foil) const
         sSetLocal = "Conspiracy";
     if(sSetLocal == QString("Modern Masters Edition"))
         sSetLocal = "Modern Masters";
+    if(sSetLocal.contains("Masterpiece Series"))
+        sSetLocal = sSetLocal.replace("Masterpiece Series: ", "");
     sSetLocal == sSetLocal.replace(QRegExp(" \\([0-9][0-9][0-9][0-9]\\)"), "");
     if(sSetLocal.at(0) != '\"') //only if it doesn't start with a " already
         sSetLocal = sSetLocal.replace(QRegExp("\""), "\"\""); //some names include " in them, deckbox wants those replaced with a pair of ""
