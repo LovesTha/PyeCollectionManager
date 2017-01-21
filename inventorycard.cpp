@@ -120,6 +120,36 @@ InventoryCard::InventoryCard(QString sInitLine) : InventoryCard(-1)
     if(!InitOrderEstablished)
         InitOrder(""); //will create the default order;
 
+    if(elements.at(2).contains("Demand"))
+        int asdfasdf = 9;
+
+    //fix things that should be quotted
+    for(int i = 0; i < elements.size(); ++i)
+    {
+        if(elements.at(i).size() > 1                    //we have enough chars for the following tests
+                && elements.at(i).at(0) == '\"')        //indicating it is a name that needed escaping
+        {
+            if(elements.at(i).at(1) != '\"')        //indicates that it is not a null string escaped)
+            {
+                QString sBeforeComma = elements.at(i);
+                while((i + 1) < elements.size()
+                      && elements.at(i + 1).at(0) != '"'
+                      && elements.at(i + 1).at(elements.at(i + 1).size()-1) == '"')
+                {
+                    QChar tmp = elements.at(i + 1).at(elements.at(i + 1).size()-1);
+                    sBeforeComma = sBeforeComma.append(",").append(elements.at(i + 1));
+                    elements.removeAt(i + 1);
+                    elements.replace(i, sBeforeComma.replace('"', ""));
+                }
+            }
+            else
+            {
+                //just and escaped null string.
+                elements.replace(i, ""); //so do that.
+            }
+        }
+    }
+
     if(pviTheFieldIndexes->at(0) > -1)
         iMyCount = elements.at(pviTheFieldIndexes->at(0)).toInt();
     else
@@ -152,6 +182,8 @@ InventoryCard::InventoryCard(QString sInitLine) : InventoryCard(-1)
         sMyName      = elements.at(pviTheFieldIndexes->at(2));
     else
         sMyName      = "Invalid!?!?!";
+
+    sMyName = sMyName.replace("ö", "o");
 
     if(pviTheFieldIndexes->at(3) > -1)
         sMyEdition   = elements.at(pviTheFieldIndexes->at(3));

@@ -322,6 +322,13 @@
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout">
           <item>
+           <widget class="QPushButton" name="checkNewOracle">
+            <property name="text">
+             <string>Check for New Oracle</string>
+            </property>
+           </widget>
+          </item>
+          <item>
            <widget class="QPushButton" name="pbOpenCollection">
             <property name="text">
              <string>Open Collection</string>

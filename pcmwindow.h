@@ -50,7 +50,7 @@ private:
     //void ReadSet();
     //void ReadCard();
 
-    QNetworkAccessManager *manager;
+    QNetworkAccessManager *imageFetchManager, *oracleVersionFetchManager, *oracleFetchManager;
     QList<OracleCard> lRequestedImages;
     //QString sMyImageRequested;
     void DisplayImage(QString);
@@ -72,6 +72,12 @@ private:
     bool Needed(OracleCard card, int *iRegCount = 0, int *iFoilCnt = 0);
     void CleanSetSelection();
 
+    bool bOracleVersionRetrieved, bNewOracleRetrieved;
+    float fMyOracleVersion;
+    void recordOracleVersion();
+
+    void onStartOracleCheck();
+
 private slots:
     void NewTCPConnection();
     void ScryGlassRequestReceived();
@@ -80,9 +86,12 @@ private slots:
     void on_pbOpenDatabase_clicked();
     void on_pbOpenOutputs_clicked();
     void ImageFetchFinished(QNetworkReply* reply);
+    void OracleVersionFetchFinished(QNetworkReply* reply);
+    void OracleFetchFinished(QNetworkReply* reply);
     void on_pbFullCardListDB_clicked();
     void on_soundsLocationLineEdit_textChanged(const QString &arg1);
     void setSelected();
+    void on_FetchOracle_clicked();
 };
 
 #endif // PCMWINDOW_H

@@ -13,7 +13,9 @@
 
 PCMWindow::PCMWindow(QWidget *parent) :
     QMainWindow(parent),
-    ui(new Ui::PCMWindow)
+    ui(new Ui::PCMWindow),
+    bOracleVersionRetrieved(false),
+    bNewOracleRetrieved(false)
 {
     ui->setupUi(this);
 
@@ -25,8 +27,12 @@ PCMWindow::PCMWindow(QWidget *parent) :
     }
     connect(pMyTCPServer, SIGNAL(newConnection()), SLOT(NewTCPConnection()));
 
-    manager = new QNetworkAccessManager();
-    connect(manager, SIGNAL(finished(QNetworkReply*)), this, SLOT(ImageFetchFinished(QNetworkReply*)));
+    imageFetchManager = new QNetworkAccessManager();
+    connect(imageFetchManager, SIGNAL(finished(QNetworkReply*)), this, SLOT(ImageFetchFinished(QNetworkReply*)));
+    oracleFetchManager= new QNetworkAccessManager();
+    connect(oracleFetchManager, SIGNAL(finished(QNetworkReply*)), this, SLOT(OracleFetchFinished(QNetworkReply*)));
+    oracleVersionFetchManager = new QNetworkAccessManager();
+    connect(oracleVersionFetchManager, SIGNAL(finished(QNetworkReply*)), this, SLOT(OracleVersionFetchFinished(QNetworkReply*)));
 
     QCoreApplication::setOrganizationName("Pye");
     QCoreApplication::setOrganizationDomain("cerberos.id.au");
@@ -147,7 +153,7 @@ void PCMWindow::ScryGlassRequestReceived()
                     ui->imageLabel->clear();
                     ui->imageLabel->setText("Fetching Image...");
                     StatusString("Fetching Image");
-                    manager->get(QNetworkRequest(QUrl(card.getImageURL())));
+                    imageFetchManager->get(QNetworkRequest(QUrl(card.getImageURL())));
                     lRequestedImages.append(card);
                 }
 
@@ -429,11 +435,26 @@ void PCMWindow::LoadInventory(QMap<quint64, InventoryCard>* qmRegularInventory,
         QTextStream in(&fInput);
         QString line = in.readLine();
         InventoryCard::InitOrder(line);
+
+        int countShort = 0;
+        int countExtras = 0;
+
         while (!in.atEnd())
         {
             line = in.readLine();
+
             if(line.length() < 5)
+            {
+                countShort++;
                 continue;
+            }
+
+            if(line.contains("Extras: "))
+            {
+                countExtras++;
+                continue;
+            }
+
             InventoryCard card(line);
             if(InvertValue)
                 card.iMyCount = 0 - card.iMyCount;
@@ -442,9 +463,12 @@ void PCMWindow::LoadInventory(QMap<quint64, InventoryCard>* qmRegularInventory,
             QList<quint64> viMultiverseIDs = qmmMultiInverse.values(card.sMyName);
             if(viMultiverseIDs.length() == 0)
             {
+                if(card.sMyName.contains("Demand"))
+                    int iasdf = 999;
                 StatusString(QString("No Multiverse ID for card from string \"%1\"").arg(line), true);
                 continue; //we can't handle things that have no multiverse ID
             }
+
             for(auto&& iMultiverseID: viMultiverseIDs)
             {
                 if(qmRightInventory->contains(iMultiverseID))
@@ -463,6 +487,7 @@ void PCMWindow::LoadInventory(QMap<quint64, InventoryCard>* qmRegularInventory,
             }
         }
 
+        StatusString(QString("Skipped %1 tokens and %2 short lines").arg(countExtras).arg(countShort));
         StatusString(QString("Read %1 regular cards").arg(qmRegularInventory->size()));
         StatusString(QString("Read %1 foil cards").arg(qmFoilInventory->size()));
     }
@@ -470,6 +495,75 @@ void PCMWindow::LoadInventory(QMap<quint64, InventoryCard>* qmRegularInventory,
     {
         StatusString(QString("Collection or Pricelist not loaded, does the file exist? (%1)")
                      .arg(sFileSource), true);
+    }
+}
+
+
+void PCMWindow::onStartOracleCheck()
+{
+    QString sOracleVersionLocation("http://mtgjson.com/json/version.json"); //as a quoted string, eg: "3.8"
+
+    oracleVersionFetchManager->get(QNetworkRequest(QUrl(sOracleVersionLocation)));
+    StatusString(QString("Fetching Oracle Version from %1").arg(sOracleVersionLocation));
+}
+
+void PCMWindow::recordOracleVersion()
+{
+    QSettings Config;
+    Config.setValue("Oracle Version", fMyOracleVersion);
+}
+
+void PCMWindow::OracleVersionFetchFinished(QNetworkReply* reply)
+{
+    QString sReply = reply->readAll();
+    float fVersionFetched = sReply.replace("\"", "").toFloat();
+
+    QSettings Config;
+    QString sVersionLastSaved = Config.value("Oracle Version", "0.0").toString();
+    float fVersionLastSaved = sVersionLastSaved.replace("\"", "").toFloat();
+
+    StatusString(QString("Server version is %1, our saved version is %2")
+                 .arg(fVersionFetched)
+                 .arg(fVersionLastSaved));
+
+    fMyOracleVersion = fVersionFetched;
+    bOracleVersionRetrieved = true;
+
+    if(bNewOracleRetrieved)
+        recordOracleVersion();
+
+    if(fVersionFetched > fVersionLastSaved)
+        on_FetchOracle_clicked();
+}
+
+void PCMWindow::on_FetchOracle_clicked()
+{
+    QString sOracleLocation("http://mtgjson.com/json/AllSetsArray.json");
+
+    oracleFetchManager->get(QNetworkRequest(QUrl(sOracleLocation)));
+    StatusString("Fetching new Oracle");
+}
+
+void PCMWindow::OracleFetchFinished(QNetworkReply *reply)
+{
+    QFile fOracle(ui->cardDatabaseLocationLineEdit->text());
+    if(fOracle.open(QIODevice::WriteOnly | QIODevice::Text))
+    {
+        QTextStream out(&fOracle);
+        out << reply->readAll();
+        out.flush();
+
+        StatusString("New Oracle retrieved and saved");
+
+        bNewOracleRetrieved = true;
+
+        if(bOracleVersionRetrieved)
+            recordOracleVersion();
+
+    }
+    else
+    {
+        StatusString(QString("Failed to save new Oracle to file: %1").arg(ui->cardDatabaseLocationLineEdit->text()), true);
     }
 }
 
@@ -551,6 +645,12 @@ void PCMWindow::on_pbOpenDatabase_clicked()
                         continue;
                 }
 
+                card.sNameEn = card.sNameEn.replace("ö", "o");
+                card.sNameEn = card.sNameEn.replace("\"", "");
+
+                if(card.sNameEn.contains("Ach! Han", Qt::CaseInsensitive))
+                    int adsfasdfasdf = 999;
+
                 if(jCard["number"].isNull())
                     iNoMCID++;
                 else
@@ -565,7 +665,7 @@ void PCMWindow::on_pbOpenDatabase_clicked()
                 card.cRarity = jCard["rarity"].toString().at(0).toLatin1();
                 card.mySet = ThisSet;
 
-                qmmMultiInverse.insert(sName, iID); //note this is now a Multi Map, this insert will never replace
+                qmmMultiInverse.insert(card.sNameEn, iID); //note this is now a Multi Map, this insert will never replace
                 qmOracle.insert(iID, card);
             }
         }
@@ -686,3 +786,4 @@ bool PCMWindow::isFoil()
 {
     return ui->cbScanningFoils->isChecked();
 }
+
