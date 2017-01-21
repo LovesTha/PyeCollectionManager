@@ -120,7 +120,7 @@ InventoryCard::InventoryCard(QString sInitLine) : InventoryCard(-1)
     if(!InitOrderEstablished)
         InitOrder(""); //will create the default order;
 
-    if(elements.at(2).contains("Demand"))
+    if(elements.at(2).contains("Shipwreck Moray"))
         int asdfasdf = 9;
 
     //fix things that should be quotted
@@ -129,9 +129,9 @@ InventoryCard::InventoryCard(QString sInitLine) : InventoryCard(-1)
         if(elements.at(i).size() > 1                    //we have enough chars for the following tests
                 && elements.at(i).at(0) == '\"')        //indicating it is a name that needed escaping
         {
+            QString sBeforeComma = elements.at(i);
             if(elements.at(i).at(1) != '\"')        //indicates that it is not a null string escaped)
             {
-                QString sBeforeComma = elements.at(i);
                 while((i + 1) < elements.size()
                       && elements.at(i + 1).at(0) != '"'
                       && elements.at(i + 1).at(elements.at(i + 1).size()-1) == '"')
@@ -139,13 +139,18 @@ InventoryCard::InventoryCard(QString sInitLine) : InventoryCard(-1)
                     QChar tmp = elements.at(i + 1).at(elements.at(i + 1).size()-1);
                     sBeforeComma = sBeforeComma.append(",").append(elements.at(i + 1));
                     elements.removeAt(i + 1);
-                    elements.replace(i, sBeforeComma.replace('"', ""));
+
+                    elements.replace(i, sBeforeComma);
                 }
             }
-            else
+
+            if(sBeforeComma.at(0) == '"')
             {
-                //just and escaped null string.
-                elements.replace(i, ""); //so do that.
+                sBeforeComma = sBeforeComma.remove(0, 1);
+                sBeforeComma = sBeforeComma.remove(sBeforeComma.length() - 1, 1);
+                sBeforeComma = sBeforeComma.replace("\"\"", "\"");
+
+                elements.replace(i, sBeforeComma);
             }
         }
     }

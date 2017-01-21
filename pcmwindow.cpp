@@ -654,7 +654,7 @@ void PCMWindow::on_pbOpenDatabase_clicked()
                     card.sNameEn = card.sNameEn.remove(card.sNameEn.length() - 1, 1);
                 }
 
-                if(card.sNameEn.contains("Ach! Han", Qt::CaseInsensitive))
+                if(card.sNameEn.contains("Shipwreck Moray", Qt::CaseInsensitive))
                     int adsfasdfasdf = 999;
 
                 if(jCard["number"].isNull())
