@@ -251,10 +251,7 @@ void PCMWindow::HandleSingleCard(OracleCard card)
         StatusString(QString("Trade: %1 ($%2)").arg(invRegularCard.sMyName).arg((isFoil() ? invFoilCard : invRegularCard).dMyMarketPrice));
         mySound.setMedia(qCoins);
         mySound.play();
-        fMyTradesOutput << "1,\"" << card.sNameEn << "\",\"" << card.mySet->sMySet << "\",Near Mint,English,";
-        if(isFoil())
-            fMyTradesOutput << "Foil";
-        fMyTradesOutput << "\n";
+        fMyTradesOutput << card.pucaInventoryLine(isFoil());
         fMyTradesOutput.flush();
     }
     else if(priceCard.dMyMarketPrice < 0.001)
@@ -365,7 +362,6 @@ void PCMWindow::CleanSetSelection()
     item = ui->hlCardImageNSetChoice->takeAt(1);
     item->layout()->deleteLater();
 }
-
 
 void PCMWindow::DisplayImage(QString sImagePath)
 {
@@ -682,17 +678,26 @@ void PCMWindow::on_pbFullCardListDB_clicked()
 {
     int append = 'a';
     unsigned int i = 999999;
-    QTextStream fFullCardListOutput;
-    QFile *fullCardListFile;
+    QTextStream fFullCardListOutputDeckBox;
+    QTextStream fFullCardListOutputPuca;
+    QFile *fullCardListFileDeckBox;
+    QFile *fullCardListFilePuca;
     for(auto&& pair: qmOracle.toStdMap())
     {
-        if(i++ > 90000) //hard coded pagination
+        if(i++ > 90000) //hard coded pagination, which is commented out
         {
-            fFullCardListOutput.flush();
-            fullCardListFile = new QFile(ui->fullCardListLocationLineEdit->text() + append++);
-            fullCardListFile->open(QIODevice::WriteOnly | QIODevice::Text);
-            fFullCardListOutput.setDevice(fullCardListFile);
-            fFullCardListOutput << "Count,Tradelist Count,Name,Edition,Card Number,Condition,Language,Foil,Signed,Artist Proof,Altered Art,Misprint,Promo,Textless,My Price,\n";
+            QString location = ui->fullCardListLocationLineEdit->text();
+            fFullCardListOutputDeckBox.flush();
+            fullCardListFileDeckBox = new QFile(location.insert(location.lastIndexOf('.'),".deckbox"));// + append++); //this little append bit is the pagination being commented out
+            fullCardListFileDeckBox->open(QIODevice::WriteOnly | QIODevice::Text);
+            fFullCardListOutputDeckBox.setDevice(fullCardListFileDeckBox);
+            fFullCardListOutputDeckBox << OracleCard::DeckBoxHeader;
+
+            location = ui->fullCardListLocationLineEdit->text();
+            fullCardListFilePuca = new QFile(location.insert(location.lastIndexOf('.'),".puca"));// + append++); //this little append bit is the pagination being commented out
+            fullCardListFilePuca->open(QIODevice::WriteOnly | QIODevice::Text);
+            fFullCardListOutputPuca.setDevice(fullCardListFilePuca);
+            fFullCardListOutputPuca << OracleCard::PucaHeader;
             i = 0;
         }
         OracleCard card = pair.second;
@@ -710,13 +715,18 @@ void PCMWindow::on_pbFullCardListDB_clicked()
             continue; //Deckbox doesn't like how we would Avatars
         if(card.mySet->sMySet.contains(QString("Masters Edition"), Qt::CaseInsensitive))
             continue; //Deckbox doesn't like how we would Avatars
-        fFullCardListOutput << card.deckBoxInventoryLine(false);
-        fFullCardListOutput << card.deckBoxInventoryLine(true);
+        fFullCardListOutputDeckBox << card.deckBoxInventoryLine(false);
+        fFullCardListOutputDeckBox << card.deckBoxInventoryLine(true);
+        fFullCardListOutputPuca << card.pucaInventoryLine(false);
+        fFullCardListOutputPuca << card.pucaInventoryLine(true);
     }
 
-    fFullCardListOutput.flush();
-    fFullCardListOutput.device()->close();
-    fFullCardListOutput.device()->deleteLater();
+    fFullCardListOutputDeckBox.flush();
+    fFullCardListOutputDeckBox.device()->close();
+    fFullCardListOutputDeckBox.device()->deleteLater();
+    fFullCardListOutputPuca.flush();
+    fFullCardListOutputPuca.device()->close();
+    fFullCardListOutputPuca.device()->deleteLater();
 }
 
 void PCMWindow::on_pbOpenOutputs_clicked()
@@ -735,10 +745,15 @@ void PCMWindow::on_pbOpenOutputs_clicked()
         delete fMyTradesOutput.device();
     }
 
+    QFileInfo tradesFileInfo(ui->tradeOutputLineEdit->text());
+    bool writeHeader = !tradesFileInfo.exists();
     QFile *tradeFile = new QFile(ui->tradeOutputLineEdit->text());
     if(tradeFile->open(QIODevice::Text | QIODevice::Append))
     {
         fMyTradesOutput.setDevice(tradeFile);
+        if(writeHeader)
+            fMyTradesOutput << OracleCard::PucaHeader;
+        fMyTradesOutput.flush();
     }
     else
     {
@@ -747,13 +762,13 @@ void PCMWindow::on_pbOpenOutputs_clicked()
     }
 
     QFileInfo collectionFileInfo(ui->collectionOutputLineEdit->text());
-    bool writeHeader = !collectionFileInfo.exists();
+    writeHeader = !collectionFileInfo.exists();
     QFile *collectionFile = new QFile(ui->collectionOutputLineEdit->text());
     if(collectionFile->open(QIODevice::Text | QIODevice::Append))
     {
         fMyCollectionOutput.setDevice(collectionFile);
         if(writeHeader)
-            fMyCollectionOutput << "Count,Tradelist Count,Name,Edition,Card Number,Condition,Language,Foil,Signed,Artist Proof,Altered Art,Misprint,Promo,Textless,My Price\n";
+            fMyCollectionOutput << OracleCard::DeckBoxHeader;
         fMyCollectionOutput.flush();
     }
     else

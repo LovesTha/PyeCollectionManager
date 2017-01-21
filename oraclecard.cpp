@@ -29,6 +29,16 @@ QString OracleSet::getLogoURL(char cRarity) const
     return QString("http://gatherer.wizards.com/Handlers/Image.ashx?type=symbol&set=%1&size=large&rarity=%2").arg(sGSID).arg(cRarity);
 }
 
+QString OracleCard::PucaHeader("Count,Name,Expansion,Condition,Language\n");
+QString OracleCard::pucaInventoryLine(bool Foil) const
+{
+    QString sInventory("1,\"%1\",\"%2\",Near Mint,English,%3\n");
+    sInventory = sInventory.arg(sNameEn).arg(mySet->sMySet);
+    sInventory = sInventory.arg(Foil ? "Foil" : "");
+    return sInventory;
+}
+
+QString OracleCard::DeckBoxHeader("Count,Tradelist Count,Name,Edition,Card Number,Condition,Language,Foil,Signed,Artist Proof,Altered Art,Misprint,Promo,Textless,My Price,\n");
 QString OracleCard::deckBoxInventoryLine(bool Foil) const
 {
     QString sInventory("1,0,%1,%2,%3,Near Mint,English,%4,,,,,,,,\n");

@@ -355,7 +355,7 @@
           <item>
            <widget class="QPushButton" name="pbFullCardListDB">
             <property name="text">
-             <string>Full Card List For DeckBox</string>
+             <string>Full Card List</string>
             </property>
            </widget>
           </item>

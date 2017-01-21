@@ -25,7 +25,11 @@ public:
     static QString sImagePath;
     QString getImagePath() const;
     QString getImageURL() const;
+    QString pucaInventoryLine(bool boolFoil) const;
     QString deckBoxInventoryLine(bool Foil) const;
     bool operator==(const OracleCard& rhs) const;
+
+    static QString DeckBoxHeader;
+    static QString PucaHeader;
 };
 #endif // ORACLECARD_H
