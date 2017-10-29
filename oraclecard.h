@@ -19,6 +19,7 @@ class OracleCard
 public:
     OracleSet *mySet;
     quint64 iMultiverseID;
+    quint8 iArtVersions;
     QString sNameEn, sSequenceNumber;
     char cRarity;
     double dValue;

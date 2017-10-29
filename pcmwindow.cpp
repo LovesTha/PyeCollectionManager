@@ -104,7 +104,7 @@ void PCMWindow::NewTCPConnection()
         QTcpSocket * socket = pMyTCPServer->nextPendingConnection();
         connect(socket, SIGNAL(readyRead()), SLOT(ScryGlassRequestReceived()));
         connect(socket, SIGNAL(disconnected()), SLOT(TCPDisconnected()));
-        StatusString(QString("New TCP Connection (%1)").arg(socket->peerAddress().toString()));
+        StatusString(QString("New TCP Connection (%1:)").arg(socket->peerAddress().toString()).arg(socket->peerPort()));
     }
 }
 
@@ -128,6 +128,9 @@ void PCMWindow::ScryGlassRequestReceived()
     }
     QList<QByteArray> elements = buffer.split(' ');
 
+    bool bValid = false;
+    OracleCard card;
+
     while(!elements.isEmpty())
     {
         QString item = elements.takeFirst();
@@ -136,42 +139,79 @@ void PCMWindow::ScryGlassRequestReceived()
             //yay it's a card request
             if(elements.isEmpty()) continue;
 
-            QList<QByteArray> request = elements.takeFirst().split('=');
-            bool bOk;
-            unsigned int multiverseID = request.takeLast().toInt(&bOk);
-            if(bOk)
+            QStringList parts = QString(elements.takeFirst()).split(QRegExp("[&=]+"));
+            for(int i = 0; i + 1 < parts.length(); ++i)
             {
-                StatusString(QString("Processing Multiverse ID: %1").arg(multiverseID));
-                OracleCard card = qmOracle.value(multiverseID);
-                QString sImagePath = card.getImagePath();
-                QFileInfo ImageFileInfo(sImagePath);
-                if(ImageFileInfo.exists() && ImageFileInfo.isFile())
+                QString piece = parts[i];
+                if(piece == "multiverseid")
                 {
-                    DisplayImage(sImagePath);
+                    bool bOk;
+                    unsigned int multiverseID = parts[i+1].toInt(&bOk);
+                    if(bOk && (multiverseID != LastCardMultiverse || !cardRepeatWindow))
+                    {
+                        LastCardMultiverse = multiverseID;
+                        StartCardRepeatWindow(250); // Prevent accepting a scan of this card for 250ms
+                        ++i; //the next bit was the MultiverseID, so we skip it later
+                        StatusString(QString("Processing Multiverse ID: %1").arg(multiverseID));
+                        card = qmOracle.value(multiverseID);
+                        QString sImagePath = card.getImagePath();
+                        QFileInfo ImageFileInfo(sImagePath);
+                        if(ImageFileInfo.exists() && ImageFileInfo.isFile())
+                        {
+                            DisplayImage(sImagePath);
+                        }
+                        else
+                        {
+                            ui->imageLabel->clear();
+                            ui->imageLabel->setText("Fetching Image...");
+                            StatusString("Fetching Image");
+                            imageFetchManager->get(QNetworkRequest(QUrl(card.getImageURL())));
+                            lRequestedImages.append(card);
+                        }
+                        bValid = true;
+                    }
                 }
-                else
-                {
-                    ui->imageLabel->clear();
-                    ui->imageLabel->setText("Fetching Image...");
-                    StatusString("Fetching Image");
-                    imageFetchManager->get(QNetworkRequest(QUrl(card.getImageURL())));
-                    lRequestedImages.append(card);
-                }
-
-                //having started attempting to display the image, lets try and figure out if this card has multiple printings
-                QList<quint64> lPrintingIDs = qmmMultiInverse.values(card.sNameEn);
-                if(lPrintingIDs.length() == 1)
-                    return HandleSingleCard(card);
-                else
-                    return HandleMultipleCards(card, lPrintingIDs);
-            }
-            else
-            {
-                ui->imageLabel->setText("Invalid request");
-                StatusString("Unrecognised request", true);
             }
         }
     }
+
+    if(socket->isWritable())
+    {
+        socket->write(QString("HTTP/1.1 200 OK\n/*\
+Date: %1\n\
+Server: Apache/2.2.14 (Win32)\n\
+Last-Modified: %1\n\
+Connection: Keep-Alive\n\
+Content-Length: 0\n\n\n*/").arg(QDateTime::currentDateTime().toString(Qt::ISODate)).toLocal8Bit());
+    }
+
+    socket->flush();
+
+    if(bValid)
+    {
+        //having started attempting to display the image, lets try and figure out if this card has multiple printings
+        QList<quint64> lPrintingIDs = qmmMultiInverse.values(card.sNameEn);
+        if(lPrintingIDs.length() == 1)
+            return HandleSingleCard(card);
+        else
+            return HandleMultipleCards(card, lPrintingIDs);
+    }
+    else
+    {
+        ui->imageLabel->setText("Invalid request");
+        StatusString("Unrecognised request", true);
+    }
+}
+
+void PCMWindow::cardRepeatWindowFinish()
+{
+    cardRepeatWindow = false;
+}
+
+void PCMWindow::StartCardRepeatWindow(uint msecs)
+{
+    QTimer::singleShot(msecs, this, SLOT(cardRepeatWindowFinish()));
+    cardRepeatWindow = true;
 }
 
 bool PCMWindow::Needed(OracleCard card, int *iRegCount, int *iFoilCnt)
@@ -460,8 +500,6 @@ void PCMWindow::LoadInventory(QMap<quint64, InventoryCard>* qmRegularInventory,
             QList<quint64> viMultiverseIDs = qmmMultiInverse.values(card.sMyName);
             if(viMultiverseIDs.length() == 0)
             {
-                if(card.sMyName.contains("Demand"))
-                    int iasdf = 999;
                 StatusString(QString("No Multiverse ID for card from string \"%1\"").arg(line), true);
                 continue; //we can't handle things that have no multiverse ID
             }
@@ -507,30 +545,48 @@ void PCMWindow::onStartOracleCheck()
 void PCMWindow::recordOracleVersion()
 {
     QSettings Config;
-    Config.setValue("Oracle Version", fMyOracleVersion);
+    Config.setValue("Oracle Version", sMyOracleVersion);
+}
+
+int cmpVersion(const char *v1, const char *v2)
+{
+    int oct_v1[3], oct_v2[3];
+    memset(&oct_v1, 0, sizeof(int) * 3);
+    memset(&oct_v2, 0, sizeof(int) * 3);
+    sscanf(v1, "%d.%d.%d", &oct_v1[0], &oct_v1[1], &oct_v1[2]);
+    sscanf(v2, "%d.%d.%d", &oct_v2[0], &oct_v2[1], &oct_v2[2]);
+
+    for (int i = 0; i < 3; i++) {
+        if (oct_v1[i] > oct_v2[i])
+            return 1;
+        else if (oct_v1[i] < oct_v2[i])
+            return -1;
+    }
+
+    return 0;
 }
 
 void PCMWindow::OracleVersionFetchFinished(QNetworkReply* reply)
 {
-    QString sReply = reply->readAll();
-    float fVersionFetched = sReply.replace("\"", "").toFloat();
+    QString sReply = reply->readAll().replace("\"","");
 
     QSettings Config;
     QString sVersionLastSaved = Config.value("Oracle Version", "0.0").toString();
-    float fVersionLastSaved = sVersionLastSaved.replace("\"", "").toFloat();
 
     StatusString(QString("Server version is %1, our saved version is %2")
-                 .arg(fVersionFetched)
-                 .arg(fVersionLastSaved));
+                 .arg(sReply)
+                 .arg(sVersionLastSaved));
 
-    fMyOracleVersion = fVersionFetched;
+    sMyOracleVersion = sReply;
     bOracleVersionRetrieved = true;
 
-    if(bNewOracleRetrieved)
-        recordOracleVersion();
+    bNewOracleRetrieved = (cmpVersion(sReply.toLatin1(), sVersionLastSaved.toLatin1()) > 0);
 
-    if(fVersionFetched > fVersionLastSaved)
+    if(bNewOracleRetrieved)
+    {
+        recordOracleVersion();
         on_FetchOracle_clicked();
+    }
 }
 
 void PCMWindow::on_FetchOracle_clicked()
@@ -643,15 +699,17 @@ void PCMWindow::on_pbOpenDatabase_clicked()
                         continue;
                 }
 
+                if(jCard["variations"].isArray())
+                    card.iArtVersions = jCard["variations"].toArray().size() + 1;
+                else
+                    card.iArtVersions = 1;
+
                 card.sNameEn = card.sNameEn.replace("ö", "o");
                 if(card.sNameEn.at(0) == '"')
                 {
                     card.sNameEn = card.sNameEn.remove(0, 1);
                     card.sNameEn = card.sNameEn.remove(card.sNameEn.length() - 1, 1);
                 }
-
-                if(card.sNameEn.contains("Shipwreck Moray", Qt::CaseInsensitive))
-                    int adsfasdfasdf = 999;
 
                 if(jCard["number"].isNull())
                     iNoMCID++;
@@ -660,9 +718,6 @@ void PCMWindow::on_pbOpenDatabase_clicked()
 
                 if(card.sSequenceNumber.contains("b") | jCard["mciNumber"].toString().contains("b"))
                     continue; //second half of a card, not worth having around (messes up DeckBox output)
-
-                //if(card.sNameEn.contains("Kenzo"))
-                    //int iasf = 999;
 
                 card.cRarity = jCard["rarity"].toString().at(0).toLatin1();
                 card.mySet = ThisSet;
@@ -676,7 +731,6 @@ void PCMWindow::on_pbOpenDatabase_clicked()
 
 void PCMWindow::on_pbFullCardListDB_clicked()
 {
-    int append = 'a';
     unsigned int i = 999999;
     QTextStream fFullCardListOutputDeckBox;
     QTextStream fFullCardListOutputPuca;
@@ -722,8 +776,9 @@ void PCMWindow::on_pbFullCardListDB_clicked()
                 | (card.sNameEn == "Island")
                 | (card.sNameEn == "Swamp")
                 | (card.sNameEn == "Mountain")
-                | (card.sNameEn == "Forest"))
-            continue; //Puca doesn't like cards with multiple arts, at least not easily (there are still all the old cards to skip, but this is a decent start on those
+                | (card.sNameEn == "Forest")
+                | (card.iArtVersions > 1))
+            continue; //Puca doesn't like cards with multiple arts, at least not easily
         fFullCardListOutputPuca << card.pucaInventoryLine(false);
         fFullCardListOutputPuca << card.pucaInventoryLine(true);
     }

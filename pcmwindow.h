@@ -12,6 +12,7 @@
 #include <QNetworkAccessManager>
 #include <QMediaPlayer>
 #include <QUrl>
+#include <QTimer>
 #include "inventorycard.h"
 #include "oraclecard.h"
 
@@ -73,10 +74,14 @@ private:
     void CleanSetSelection();
 
     bool bOracleVersionRetrieved, bNewOracleRetrieved;
-    float fMyOracleVersion;
+    QString sMyOracleVersion;
     void recordOracleVersion();
 
     void onStartOracleCheck();
+
+    void StartCardRepeatWindow(uint msecs);
+    bool cardRepeatWindow;
+    unsigned int LastCardMultiverse;
 
 private slots:
     void NewTCPConnection();
@@ -92,6 +97,7 @@ private slots:
     void on_soundsLocationLineEdit_textChanged(const QString &arg1);
     void setSelected();
     void on_FetchOracle_clicked();
+    void cardRepeatWindowFinish();
 };
 
 #endif // PCMWINDOW_H

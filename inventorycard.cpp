@@ -120,9 +120,6 @@ InventoryCard::InventoryCard(QString sInitLine) : InventoryCard(-1)
     if(!InitOrderEstablished)
         InitOrder(""); //will create the default order;
 
-    if(elements.at(2).contains("Shipwreck Moray"))
-        int asdfasdf = 9;
-
     //fix things that should be quotted
     for(int i = 0; i < elements.size(); ++i)
     {
@@ -136,7 +133,6 @@ InventoryCard::InventoryCard(QString sInitLine) : InventoryCard(-1)
                       && elements.at(i + 1).at(0) != '"'
                       && elements.at(i + 1).at(elements.at(i + 1).size()-1) == '"')
                 {
-                    QChar tmp = elements.at(i + 1).at(elements.at(i + 1).size()-1);
                     sBeforeComma = sBeforeComma.append(",").append(elements.at(i + 1));
                     elements.removeAt(i + 1);
 
