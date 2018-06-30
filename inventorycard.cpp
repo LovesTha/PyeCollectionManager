@@ -121,9 +121,10 @@ InventoryCard::InventoryCard(QString sInitLine) : InventoryCard(-1)
         InitOrder(""); //will create the default order;
 
     //fix things that should be quotted
-    for(int i = 0; i < elements.size(); ++i)
+    for(int i = 0; i + 1 < elements.size(); ++i)
     {
         if(elements.at(i).size() > 1                    //we have enough chars for the following tests
+           && elements.at(i+1).size() > 1                    //we have enough chars for the following tests
                 && elements.at(i).at(0) == '\"')        //indicating it is a name that needed escaping
         {
             QString sBeforeComma = elements.at(i);

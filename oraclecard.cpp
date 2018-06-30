@@ -7,9 +7,16 @@ QString OracleSet::sImagePath = "/tmp/";
 
 QString OracleCard::getImagePath() const
 {
-    QDir path(QString("%1/%2").arg(sImagePath).arg(mySet->sMCISID));
-    path.mkpath(".");
-    return QString("%3/%1/%2.jpg").arg(mySet->sMCISID).arg(sSequenceNumber).arg(sImagePath);
+    if(mySet)
+    {
+        QDir path(QString("%1/%2").arg(sImagePath).arg(mySet->sMCISID));
+        path.mkpath(".");
+        return QString("%3/%1/%2.jpg").arg(mySet->sMCISID).arg(sSequenceNumber).arg(sImagePath);
+    }
+    else
+    {
+        return "";
+    }
 }
 
 QString OracleCard::getImageURL() const

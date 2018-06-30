@@ -196,10 +196,10 @@ Content-Length: 0\n\n\n*/").arg(QDateTime::currentDateTime().toString(Qt::ISODat
         else
             return HandleMultipleCards(card, lPrintingIDs);
     }
-    else
+    else if(!cardRepeatWindow)
     {
         ui->imageLabel->setText("Invalid request");
-        StatusString("Unrecognised request", true);
+        StatusString("Unrecognised/duplicated (Delver) request", true);
     }
 }
 
