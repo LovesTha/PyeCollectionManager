@@ -7,9 +7,9 @@
 class OracleSet
 {
 public:
-    QString sMySet, sMCISID, sGSID;
+    QString sMySet, sSetCode, sGSID;
     QString getLogoPath(char cRarity) const;
-    QString getLogoURL(char cRarity) const;
+//    QString getLogoURL(char cRarity) const;
     QDateTime LastSelected;
     static QString sImagePath;
 };

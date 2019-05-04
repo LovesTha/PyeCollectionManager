@@ -639,6 +639,8 @@ void PCMWindow::on_pbOpenDatabase_clicked()
         if(jError.error != QJsonParseError::NoError)
             ui->imageLabel->setText(QObject::tr("Not a json document"));
 
+        QString tmp = jError.errorString();
+
         QJsonArray jSets = jdoc.array();
 
         for(auto&& set: jSets)
@@ -646,26 +648,12 @@ void PCMWindow::on_pbOpenDatabase_clicked()
             QJsonObject jSet = set.toObject();
             QJsonArray jCards = jSet["cards"].toArray();
 
-            QString sMCISID, sGSID;
-            if(jSet["magicCardsInfoCode"].isNull())
-            {
-                iNoSID++;
-                sMCISID = jSet["code"].toString().toLower();
-            }
-            else
-            {
-                sMCISID = jSet["magicCardsInfoCode"].toString();
-            }
-
-            if(jSet["gathererCode"].isNull())
-                sGSID = jSet["code"].toString();
-            else
-                sGSID = jSet["gathererCode"].toString();
+            QString sSetCode;
+            sSetCode = jSet["code"].toString();
 
             OracleSet *ThisSet = new OracleSet;
             ThisSet->sMySet = jSet["name"].toString();
-            ThisSet->sMCISID = sMCISID;
-            ThisSet->sGSID = sGSID;
+            ThisSet->sSetCode = sSetCode;
             ThisSet->LastSelected = QDateTime::currentDateTime();
 
 
@@ -674,9 +662,9 @@ void PCMWindow::on_pbOpenDatabase_clicked()
                 QJsonObject jCard = cardIter.toObject();
                 OracleCard card;
 
-                if(jCard["multiverseid"].isNull())
+                if(jCard["multiverseId"].isNull())
                     iNoMID++;
-                unsigned int iID = jCard["multiverseid"].toInt();
+                unsigned int iID = jCard["multiverseId"].toInt();
                 card.iMultiverseID = iID;
 
                 if(iID == 0) //some sets, like colectors edition don't have multiverse IDs, we can't use them.
@@ -690,7 +678,7 @@ void PCMWindow::on_pbOpenDatabase_clicked()
                     QJsonArray names = jCard["names"].toArray();
                     if(names.size() == 2)
                     {
-                        if(jCard["layout"].toString().contains("split")) //BFG
+                        if(jCard["layout"].toString().contains("split") | jCard["layout"].toString().contains("aftermath")) //BFG
                         {
                             card.sNameEn = names.at(0).toString() + " // " + names.at(1).toString();
                         }
@@ -718,6 +706,9 @@ void PCMWindow::on_pbOpenDatabase_clicked()
 
                 if(card.sSequenceNumber.contains("b") | jCard["mciNumber"].toString().contains("b"))
                     continue; //second half of a card, not worth having around (messes up DeckBox output)
+
+                if(!jCard["side"].isNull() && !jCard["side"].toString().contains("a"))
+                    continue; // second or third side of a flip, split, or transform card.
 
                 card.cRarity = jCard["rarity"].toString().at(0).toLatin1();
                 card.mySet = ThisSet;

@@ -9,9 +9,9 @@ QString OracleCard::getImagePath() const
 {
     if(mySet)
     {
-        QDir path(QString("%1/%2").arg(sImagePath).arg(mySet->sMCISID));
+        QDir path(QString("%1/%2").arg(sImagePath).arg(mySet->sSetCode));
         path.mkpath(".");
-        return QString("%3/%1/%2.jpg").arg(mySet->sMCISID).arg(sSequenceNumber).arg(sImagePath);
+        return QString("%3/%1/%2.jpg").arg(mySet->sSetCode).arg(sSequenceNumber).arg(sImagePath);
     }
     else
     {
@@ -26,15 +26,15 @@ QString OracleCard::getImageURL() const
 
 QString OracleSet::getLogoPath(char cRarity) const
 {
-    QDir path(QString("%1/%2").arg(sImagePath).arg(sMCISID));
+    QDir path(QString("%1/%2").arg(sImagePath).arg(sSetCode));
     path.mkpath(".");
-    return QString("%3/%1/%2.jpg").arg(sMCISID).arg(cRarity).arg(sImagePath); //path makes sense because it will also have all the card images in that folder, not just the few rarities
+    return QString("%3/%1/%2.jpg").arg(sSetCode).arg(cRarity).arg(sImagePath); //path makes sense because it will also have all the card images in that folder, not just the few rarities
 }
 
-QString OracleSet::getLogoURL(char cRarity) const
-{
-    return QString("http://gatherer.wizards.com/Handlers/Image.ashx?type=symbol&set=%1&size=large&rarity=%2").arg(sGSID).arg(cRarity);
-}
+//QString OracleSet::getLogoURL(char cRarity) const
+//{
+//    return QString("http://gatherer.wizards.com/Handlers/Image.ashx?type=symbol&set=%1&size=large&rarity=%2").arg(sGSID).arg(cRarity);
+//}
 
 QString OracleCard::PucaHeader("Count,Name,Expansion,Condition,Language\n");
 QString OracleCard::pucaInventoryLine(bool Foil) const

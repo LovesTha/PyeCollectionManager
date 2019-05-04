@@ -1,0 +1,1 @@
+cat AllSets.json | jq '.| [ .[] | {code: .code, name: .name, cards: [.cards[] | { name: .name, names: .names, number: .number, multiverseId: .multiverseId, hasFoil: .hasFoil, hasNormal: .hasNonFoil, variations: .variations, side: .side, rarity: .rarity, layout: .layout}]}]' > Smaller.json 

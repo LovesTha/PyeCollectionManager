@@ -23,10 +23,10 @@ SetChoice::SetChoice(OracleCard Card, QWidget *parent) : QPushButton(parent), My
     else
     {
         setIcon(QIcon());
-        manager = new QNetworkAccessManager();
-        connect(manager, SIGNAL(finished(QNetworkReply*)), this, SLOT(ImageFetchFinished(QNetworkReply*)));
-        manager->get(QNetworkRequest(QUrl(MyCard.mySet->getLogoURL(MyCard.cRarity))));
-        sMyImageRequested = sIconPath;
+//        manager = new QNetworkAccessManager();
+//        connect(manager, SIGNAL(finished(QNetworkReply*)), this, SLOT(ImageFetchFinished(QNetworkReply*)));
+//        manager->get(QNetworkRequest(QUrl(MyCard.mySet->getLogoURL(MyCard.cRarity))));
+//        sMyImageRequested = sIconPath;
     }
 }
 
