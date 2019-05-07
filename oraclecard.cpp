@@ -21,7 +21,7 @@ QString OracleCard::getImagePath() const
 
 QString OracleCard::getImageURL() const
 {
-    return QString("http://gatherer.wizards.com/Handlers/Image.ashx?multiverseid=%1&type=card").arg(iMultiverseID);
+    return QString("https://gatherer.wizards.com/Handlers/Image.ashx?multiverseid=%1&type=card").arg(iMultiverseID);
 }
 
 QString OracleSet::getLogoPath(char cRarity) const

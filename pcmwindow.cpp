@@ -38,7 +38,7 @@ PCMWindow::PCMWindow(QWidget *parent) :
     QCoreApplication::setOrganizationDomain("cerberos.id.au");
     QCoreApplication::setApplicationName("Collection Manager");
 
-    setWindowTitle("Pye Collection Manager - 0.1-Alpha-r2");
+    setWindowTitle("Pye Collection Manager - 0.2-Alpha-r1");
 
     //Loading Settings
     QSettings Config;
@@ -427,7 +427,7 @@ void PCMWindow::ImageFetchFinished(QNetworkReply* reply)
            if(img2->isNull())
            {
                ui->imageLabel->setText("Image failed to fetch");
-               StatusString(QString("Failed to load image: %1").arg(requestedCard.getImageURL()), true);
+               StatusString(QString("Failed to load image: %1 - %2").arg(requestedCard.getImageURL()).arg(reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt()), true);
            }
            else
            {
@@ -632,14 +632,14 @@ void PCMWindow::on_pbOpenDatabase_clicked()
     QFile fInput(ui->cardDatabaseLocationLineEdit->text());
     if(fInput.open(QIODevice::ReadOnly | QIODevice::Text))
     {
-        unsigned int iNoMID = 0, iNoMCID = 0, iNoSID = 0;
+        unsigned int iNoMID = 0, iNoMCID = 0;
 
         QJsonDocument jdoc = QJsonDocument::fromJson(fInput.readAll(), &jError);
 
         if(jError.error != QJsonParseError::NoError)
             ui->imageLabel->setText(QObject::tr("Not a json document"));
 
-        QString tmp = jError.errorString();
+//        QString tmp = jError.errorString();
 
         QJsonArray jSets = jdoc.array();
 
