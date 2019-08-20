@@ -67,7 +67,7 @@ private:
 
     void HandleSingleCard(OracleCard card);
     void HandleMultipleCards(OracleCard card, QList<quint64> lCardIDs);
-    void trash(InventoryCard card);
+    void trash(QString card);
 
     bool isFoil();
     bool Needed(OracleCard card, int *iRegCount = 0, int *iFoilCnt = 0);

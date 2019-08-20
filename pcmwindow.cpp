@@ -261,7 +261,7 @@ void PCMWindow::HandleSingleCard(OracleCard card)
     int iRegularCount = 0;
     int iFoilCount = 0;
 
-    InventoryCard priceCard = qmMyRegularPriceGuide.value(multiverseID, InventoryCard(0));
+//    InventoryCard priceCard = qmMyRegularPriceGuide.value(multiverseID, InventoryCard(0));
 
     if(Needed(card, &iRegularCount, &iFoilCount))
     {
@@ -285,7 +285,7 @@ void PCMWindow::HandleSingleCard(OracleCard card)
         fMyCollectionOutput.flush();
         return;
     }
-    else if((priceCard.dMyMarketPrice > ui->tradeValueThresholdDoubleSpinBox->value()) | isFoil())
+    else if((card.dValue > ui->tradeValueThresholdDoubleSpinBox->value()) | isFoil())
     {
         ui->cardAction->setText("Trade");
         StatusString(QString("Trade: %1 ($%2)").arg(invRegularCard.sMyName).arg((isFoil() ? invFoilCard : invRegularCard).dMyMarketPrice));
@@ -294,7 +294,7 @@ void PCMWindow::HandleSingleCard(OracleCard card)
         fMyTradesOutput << card.pucaInventoryLine(isFoil());
         fMyTradesOutput.flush();
     }
-    else if(priceCard.dMyMarketPrice < 0.001)
+    else if(card.dValue < 0.001)
     {
         ui->cardAction->setText("No Price Data");
         StatusString(QString("No Price Data for: %1!").arg(invRegularCard.sMyName), true);
@@ -303,14 +303,14 @@ void PCMWindow::HandleSingleCard(OracleCard card)
     }
     else
     {
-        trash(invRegularCard);
+        trash(invRegularCard.sMyName);
     }
 }
 
-void PCMWindow::trash(InventoryCard card)
+void PCMWindow::trash(QString card)
 {
     ui->cardAction->setText("Trash");
-    StatusString(QString("Trash: %1").arg(card.sMyName));
+    StatusString(QString("Trash: %1").arg(card));
     mySound.setMedia(qTrash);
     mySound.play();
 }
@@ -333,17 +333,17 @@ void PCMWindow::HandleMultipleCards(OracleCard card, QList<quint64> lCardIDs)
     if(!isFoil() && !Needed(card))
     {
         bool trashable = true;
-        InventoryCard priceCard(-1);
+        OracleCard priceCard;
         for(auto&& CardID: lCardIDs)
         {
-            priceCard = qmMyRegularPriceGuide.value(CardID, InventoryCard(0));
+            priceCard = qmOracle.value(CardID, OracleCard());
 
-            if(priceCard.dMyMarketPrice < 0.001)
+            if(priceCard.dValue < 0.001)
             {
                 trashable = false;
                 break; // we have no price data for this version, so we can't confidently trash it ever
             }
-            if(priceCard.dMyMarketPrice > ui->tradeValueThresholdDoubleSpinBox->value())
+            if(priceCard.dValue > ui->tradeValueThresholdDoubleSpinBox->value())
             {
                 trashable = false;
                 break; // we have a valuable variant, so we can't confidently trash it ever
@@ -351,7 +351,7 @@ void PCMWindow::HandleMultipleCards(OracleCard card, QList<quint64> lCardIDs)
         }
 
         if(trashable)
-            return trash(priceCard);
+            return trash(priceCard.sNameEn);
     }
 
     //As we haven't been able to trash the card, now we must determine what set it is from
@@ -712,6 +712,33 @@ void PCMWindow::on_pbOpenDatabase_clicked()
 
                 card.cRarity = jCard["rarity"].toString().at(0).toLatin1();
                 card.mySet = ThisSet;
+
+                double value = 0;
+                if( jCard["prices"].isObject() )
+                {
+                    QJsonObject prices = jCard["prices"].toObject();
+                    if(prices["paper"].isObject())
+                    {
+                        QJsonObject paperPrices = prices["paper"].toObject();
+                        QDate date = QDateTime::currentDateTime().date();
+                        QDate limit = date.addDays(-1000);
+                        date = date.addDays(-1);
+                        for( ; date > limit; )
+                        {
+                            QString sDate = QString("%1-%2-%3")
+                                    .arg(date.year(), 4,10,QLatin1Char('0'))
+                                    .arg(date.month(),2,10,QLatin1Char('0'))
+                                    .arg(date.day(),  2,10,QLatin1Char('0'));
+                            if(paperPrices[sDate].isDouble())
+                            {
+                                value = paperPrices[sDate].toDouble();
+                                date = date.addYears(-10); // End the loop
+                            }
+                            date = date.addDays(-1);
+                        }
+                    }
+                }
+                card.dValue = value;
 
                 qmmMultiInverse.insert(card.sNameEn, iID); //note this is now a Multi Map, this insert will never replace
                 qmOracle.insert(iID, card);
