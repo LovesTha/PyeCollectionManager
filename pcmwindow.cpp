@@ -118,7 +118,7 @@ void PCMWindow::TCPDisconnected()
 void PCMWindow::ScryGlassRequestReceived()
 {
     if(ui->hlCardImageNSetChoice->count() > 1)
-        ((SetChoice*)ui->hlCardImageNSetChoice->itemAt(1)->layout()->itemAt(0)->widget())->click();
+         ((SetChoice*)ui->hlCardImageNSetChoice->itemAt(1)->layout()->itemAt(0)->widget())->click();
 
     QTcpSocket *socket = static_cast<QTcpSocket*>(sender());
     QByteArray buffer;
@@ -193,8 +193,10 @@ Content-Length: 0\n\n\n*/").arg(QDateTime::currentDateTime().toString(Qt::ISODat
         QList<quint64> lPrintingIDs = qmmMultiInverse.values(card.sNameEn);
         if(lPrintingIDs.length() == 1)
             return HandleSingleCard(card);
-        else
+        else if(lPrintingIDs.length() > 1)
             return HandleMultipleCards(card, lPrintingIDs);
+        else
+            return;
     }
     else if(!cardRepeatWindow)
     {
